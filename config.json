@@ -1,0 +1,79 @@
+{
+  "store": {
+    "name": "اوفالي",
+    "tagline": "شريكك الأول للتسوق الموثوق والآمن",
+    "logoUrl": "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=200&auto=format&fit=crop&q=80",
+    "welcomeBannerUrl": "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=1200&auto=format&fit=crop&q=80",
+    "offerImageUrl": "https://images.unsplash.com/photo-1511556532299-8f662fc26c06?w=800&auto=format&fit=crop&q=80",
+    "email": "support@store.sa",
+    "address": "الرياض / صنعاء - المملكة العربية السعودية واليمن",
+    "taxNumber": "310123456700003",
+    "commercialRegisterNumber": "7033543294",
+    "maroofNumber": "284912",
+    "saudiBusinessVerificationUrl": "https://business.sa",
+    "orderMaxProcessingHours": 2
+  },
+  "contact": {
+    "whatsapp": "966599539659",
+    "phoneSaudi": "966599539659",
+    "phoneYemen": "967715989357"
+  },
+  "googleSheets": {
+    "spreadsheetId": "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms",
+    "googleAppsScriptUrl": "https://script.google.com/macros/s/AKfycbxMrMXb7KyNuI0Ec-hhZ6a_WI5kWWga1yEUf6j9aYzqkx57793_BCHV9Fmqpw4uXuF77A/exec",
+    "defaultStoreUrl": "https://script.google.com/macros/s/AKfycbxMrMXb7KyNuI0Ec-hhZ6a_WI5kWWga1yEUf6j9aYzqkx57793_BCHV9Fmqpw4uXuF77A/exec"
+  },
+  "currency": {
+    "defaultCurrency": "SAR",
+    "targetCountry": "BOTH",
+    "yerExchangeRate": 142.5,
+    "usdExchangeRate": 0.266
+  },
+  "policies": {
+    "aboutUsText": "نحن متجر سعودي موثق ومسجل رسمياً، نسعى لتقديم تجربة تسوق إلكتروني متكاملة، آمنة ومريحة لعملائنا الكرام بأسعار تنافسية وجودة مضمونة.",
+    "warrantyPolicyText": "نقدم ضماناً شاملاً واستبدالاً فورياً لجميع المنتجات ضد العيوب المصنعية لمدة عامين، مع خدمة عملاء متواصلة على مدار الساعة.",
+    "returnPolicyText": "يحق للعميل استبدال أو استرجاع المنتجات خلال 7 أيام من تاريخ الاستلام، بشرط أن تكون بحالتها الأصلية غير المستخدمة وبكامل ملحقاتها.",
+    "deliveryInfo": "🚀 توصيل سريع ومباشر لكافة مدن المملكة العربية السعودية والجمهورية اليمنية خلال 24 - 48 ساعة. شحن مجاني لكافة الطلبات بقيمة 150 ر.س أو أكثر.",
+    "footerAbout": "متجر $MOH$ - وجهتكم الأولى للتسوق الإلكتروني المعتمد والموثوق. نوفر أرقى المنتجات بأعلى جودة مع الضمان الذهبي، التوصيل السريع لكافة المناطق والدفع عند الاستلام.",
+    "storeBranches": "🇸🇦 فرع الرياض: حي العليا - طريق الملك فهد | 🇾🇪 فرع صنعاء: شارع حدة - مركز العاصمة | 🇾🇪 فرع عدن: كريتر - الشارع الرئيسي"
+  },
+  "socialLinks": {
+    "whatsapp": "966599539659",
+    "tiktok": "https://tiktok.com",
+    "facebook": "https://facebook.com",
+    "instagram": "https://instagram.com",
+    "telegram": "https://t.me",
+    "snapchat": "https://snapchat.com",
+    "twitter": "https://x.com"
+  },
+  "admin": {
+    "adminPasswordHash": "2003",
+    "orderNotificationSound": "chime"
+  },
+  "theme": {
+    "preset": "shein_pink",
+    "primaryColor": "#ec4899",
+    "secondaryColor": "#a855f7",
+    "accentColor": "#f43f5e",
+    "bgColor": "#090d16",
+    "textColor": "#f8fafc",
+    "iconColor": "#f8fafc"
+  },
+  "subscription": {
+    "planName": "الباقة الاحترافية (Pro Plan)",
+    "expiryDate": "2026-09-15",
+    "maxProducts": 500,
+    "maxOrders": 200,
+    "maxEmployees": 10,
+    "autoSyncOffline": true
+  },
+  "appDownload": {
+    "showAppDownloadBanner": false,
+    "title": "حمّل تطبيق المتجر الآن",
+    "description": "تسوق أسرع واحصل على خصومات حصرية وإشعارات فورية بالعروض الجديدة مباشرة على هاتفك.",
+    "androidUrl": "",
+    "iosUrl": "",
+    "huaweiUrl": "",
+    "desktopUrl": ""
+  }
+}

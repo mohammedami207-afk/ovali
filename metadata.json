@@ -1,0 +1,6 @@
+{
+  "name": "$MOH$",
+  "description": "متجر إلكتروني أنيق بتصميم فاخر ($MOH$) مع ربط أوفلاين ومباشر بجدول Google Sheets وتصدير وإستيراد إكسل وفواتير إلكترونية.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

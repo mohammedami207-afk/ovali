@@ -1,0 +1,256 @@
+@import "tailwindcss";
+
+:root {
+  --theme-primary: #ec4899;
+  --theme-primary-rgb: 236, 72, 153;
+  --theme-secondary: #a855f7;
+  --theme-secondary-rgb: 168, 85, 247;
+  --theme-accent: #f43f5e;
+  --theme-accent-rgb: 244, 63, 94;
+  --theme-bg: #090d16;
+  --theme-text: #ffffff;
+  --theme-text-contrast: #ffffff;
+  --theme-icon: #f8fafc;
+  --theme-card-bg: var(--theme-bg, #090d16);
+  --theme-card-border: rgba(51, 65, 85, 0.6);
+  --theme-inner-bg: rgba(2, 6, 23, 0.7);
+  --theme-subtext: #94a3b8;
+}
+
+/* Global Icon Color Adaptation */
+svg.theme-icon-sync {
+  color: var(--theme-icon, inherit);
+}
+
+html, body {
+  overflow-x: clip;
+  max-width: 100vw;
+  margin: 0;
+  padding: 0;
+  background-color: var(--theme-bg, #090d16) !important;
+  color: var(--theme-text, #f8fafc) !important;
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 700;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+div, section, article, header, footer, aside, nav {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+/* Force Arial Bold on Headings and UI elements */
+h1, h2, h3, h4, h5, h6, button, input, select, textarea, span, p, a {
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 700;
+}
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700 !important;
+}
+
+#root {
+  overflow-x: clip;
+  max-width: 100vw;
+  width: 100%;
+}
+
+/* Light Theme Harmonized Styling */
+html.light-theme, html.light-theme body, html.light, html.light body {
+  background-color: var(--theme-bg, #ffffff) !important;
+  color: var(--theme-text, #000000) !important;
+  --theme-text: #000000;
+  --theme-text-contrast: #000000;
+  --theme-card-bg: var(--theme-bg, #ffffff);
+  --theme-card-border: rgba(226, 232, 240, 0.9);
+  --theme-inner-bg: rgba(241, 245, 249, 0.9);
+  --theme-subtext: #334155;
+}
+
+/* Ensure smooth transitions on background and text colors */
+* {
+  border-color: var(--theme-card-border, rgba(51, 65, 85, 0.4));
+}
+
+/* Glass overlay on product images must ALWAYS preserve high-contrast dark-glass backdrop */
+.glass-overlay-btn,
+html.light-theme .glass-overlay-btn,
+html.light .glass-overlay-btn {
+  background-color: rgba(15, 23, 42, 0.75) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+.glass-overlay-btn:hover,
+html.light-theme .glass-overlay-btn:hover,
+html.light .glass-overlay-btn:hover {
+  background-color: rgba(15, 23, 42, 0.95) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+}
+.glass-overlay-btn svg,
+html.light-theme .glass-overlay-btn svg,
+html.light .glass-overlay-btn svg {
+  color: #ffffff !important;
+}
+
+/* Dynamic Theme Helper Classes */
+.bg-theme-card {
+  background-color: var(--theme-card-bg, var(--theme-bg, #090d16)) !important;
+}
+.bg-theme-bg {
+  background-color: var(--theme-bg, #090d16) !important;
+}
+.border-theme-card {
+  border-color: var(--theme-card-border, #e2e8f0) !important;
+}
+.bg-theme-inner {
+  background-color: var(--theme-inner-bg, #f8fafc) !important;
+}
+.text-theme-subtext {
+  color: var(--theme-subtext, #64748b) !important;
+}
+.text-theme-main {
+  color: var(--theme-text, #0f172a) !important;
+}
+html.light .text-theme-main,
+html.light-theme .text-theme-main {
+  color: #000000 !important;
+}
+html.dark .text-theme-main,
+html.dark-theme .text-theme-main {
+  color: #ffffff !important;
+}
+.text-theme-contrast {
+  color: var(--theme-text-contrast, #ffffff) !important;
+}
+
+.bg-theme-primary {
+  background-color: var(--theme-primary, #ec4899) !important;
+}
+.bg-theme-secondary {
+  background-color: var(--theme-secondary, #a855f7) !important;
+}
+.bg-theme-accent {
+  background-color: var(--theme-accent, #f43f5e) !important;
+}
+.bg-theme-bg {
+  background-color: var(--theme-bg, #090d16) !important;
+}
+.text-theme-primary {
+  color: var(--theme-primary, #ec4899) !important;
+}
+.text-theme-secondary {
+  color: var(--theme-secondary, #a855f7) !important;
+}
+.text-theme-accent {
+  color: var(--theme-accent, #f43f5e) !important;
+}
+.border-theme-primary {
+  border-color: var(--theme-primary, #ec4899) !important;
+}
+.border-theme-secondary {
+  border-color: var(--theme-secondary, #a855f7) !important;
+}
+.border-theme-accent {
+  border-color: var(--theme-accent, #f43f5e) !important;
+}
+.bg-theme-gradient {
+  background: linear-gradient(135deg, var(--theme-primary, #ec4899), var(--theme-secondary, #a855f7)) !important;
+}
+.bg-theme-gradient-accent {
+  background: linear-gradient(135deg, var(--theme-accent, #f43f5e), var(--theme-primary, #ec4899)) !important;
+}
+.text-theme-gradient {
+  background: linear-gradient(135deg, var(--theme-primary, #ec4899), var(--theme-secondary, #a855f7));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.shadow-theme-primary {
+  box-shadow: 0 10px 25px -5px rgba(var(--theme-primary-rgb, 236, 72, 153), 0.35) !important;
+}
+.shadow-theme-glow {
+  box-shadow: 0 0 30px -5px rgba(var(--theme-primary-rgb, 236, 72, 153), 0.4) !important;
+}
+
+/* Sleek Store-Themed Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--theme-card-border, rgba(148, 163, 184, 0.3));
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--theme-primary, #ec4899);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--theme-card-border, rgba(148, 163, 184, 0.3)) transparent;
+}
+
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .printable-invoice, .printable-invoice * {
+    visibility: visible;
+  }
+  .printable-invoice {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 20px;
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* Marquee Animation */
+@keyframes marquee-rtl {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(50%); } /* 50% because we duplicate content inside a flex container */
+}
+
+.animate-marquee-rtl {
+  animation: marquee-rtl 20s linear infinite;
+  display: flex;
+  width: max-content;
+}
+.animate-marquee-rtl:hover {
+  animation-play-state: paused;
+}
+
+/* Hide external watermark badges & platform banners */
+[class*="netlify"],
+[id*="netlify"],
+a[href*="netlify"],
+.netlify-badge,
+#netlify-badge,
+[data-netlify],
+div[class*="watermark"],
+div[id*="watermark"] {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}

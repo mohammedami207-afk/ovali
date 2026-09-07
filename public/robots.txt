@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://ovali.com/sitemap.xml
