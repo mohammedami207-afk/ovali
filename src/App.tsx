@@ -1501,13 +1501,23 @@ function hexToRgbString(hex: string, fallback: string = '236, 72, 153'): string 
   // Pull data directly from Google Sheets for all sheets
   const pullDataFromGoogleSheets = async (showNotification = false) => {
     if (!settings?.googleAppsScriptUrl || !settings.googleAppsScriptUrl.trim().startsWith('http')) {
+      if (isFirstLoad.current) {
+        setIsGlobalLoading(false);
+        isFirstLoad.current = false;
+        setTimeout(() => setShowOfferAnnouncement(true), 500);
+      }
       return;
     }
+
+    if (isFirstLoad.current) {
+      setGlobalLoadingMessage('تحميل العروضات الجديده...');
+    }
+
     setSyncStatus('syncing');
     try {
       const res = await fetchDataFromGoogleSheets(settings.googleAppsScriptUrl);
       if (res.success) {
-        if (res.products && res.products.length > 0) {
+        if (Array.isArray(res.products)) {
           setProducts(res.products);
           saveLocalProducts(res.products);
         }
@@ -1518,46 +1528,46 @@ function hexToRgbString(hex: string, fallback: string = '236, 72, 153'): string 
             return merged;
           });
         }
-        if (res.employees && res.employees.length > 0) {
+        if (Array.isArray(res.employees)) {
           setEmployees(res.employees);
           saveLocalEmployees(res.employees);
         }
-        if (res.categories && res.categories.length > 0) {
+        if (Array.isArray(res.categories)) {
           setCategories(res.categories);
           saveLocalCategories(res.categories);
         }
-        if (res.orders && res.orders.length > 0) {
+        if (Array.isArray(res.orders)) {
           setOrders(res.orders);
           saveLocalOrders(res.orders);
         }
-        if (res.customers && res.customers.length > 0) {
+        if (Array.isArray(res.customers)) {
           setCustomers(res.customers);
           saveLocalCustomers(res.customers);
         }
-        if (res.currencies && res.currencies.length > 0) {
+        if (Array.isArray(res.currencies)) {
           setCurrencies(res.currencies);
         }
-        if (res.offers && res.offers.length > 0) {
+        if (Array.isArray(res.offers)) {
           setOffers(res.offers);
           saveLocalOffers(res.offers);
         }
-        if (res.coupons && res.coupons.length > 0) {
+        if (Array.isArray(res.coupons)) {
           setCoupons(res.coupons);
           saveLocalCoupons(res.coupons);
         }
-        if (res.suppliers && res.suppliers.length > 0) {
+        if (Array.isArray(res.suppliers)) {
           setSuppliers(res.suppliers);
           saveLocalSuppliers(res.suppliers);
         }
-        if (res.invoices && res.invoices.length > 0) {
+        if (Array.isArray(res.invoices)) {
           setInvoices(res.invoices);
           saveLocalInvoices(res.invoices);
         }
-        if (res.auditLogs && res.auditLogs.length > 0) {
+        if (Array.isArray(res.auditLogs)) {
           setAuditLogs(res.auditLogs);
           saveLocalAuditLogs(res.auditLogs);
         }
-        if (res.affiliates && res.affiliates.length > 0) {
+        if (Array.isArray(res.affiliates)) {
           setPartners(res.affiliates);
           saveLocalReferralPartners(res.affiliates);
         }
@@ -1638,22 +1648,17 @@ function hexToRgbString(hex: string, fallback: string = '236, 72, 153'): string 
     }
   };
 
-  // Auto-sync & live poller on app load / browser refresh with 800ms max loading safety timeout
+  // Auto-sync & live poller on app load / browser refresh: Wait for initial fetch to finish before removing loader
   useEffect(() => {
-    // Guaranteed max 800ms loading timeout for ultra-fast instant opening
-    const maxLoadTimer = setTimeout(() => {
+    // Safety fallback timer (10s) in case network is disconnected or server takes too long
+    const safetyFallbackTimer = setTimeout(() => {
       if (isFirstLoad.current) {
+        console.warn('Sync timeout reached, displaying store with local cache.');
         setIsGlobalLoading(false);
         isFirstLoad.current = false;
-        
-        // Show welcome back toast if cart has items
-        if (cart.length > 0) {
-          setTimeout(() => {
-            addNotification('🛒 مرحباً بعودتك!', `يوجد ${cart.length} منتجات بانتظارك في سلة التسوق. أكمل طلبك الآن!`, 'info');
-          }, 500);
-        }
+        setShowOfferAnnouncement(true);
       }
-    }, 800);
+    }, 10000);
 
     if (settings?.googleAppsScriptUrl && settings.googleAppsScriptUrl.trim().startsWith('http')) {
       pullDataFromGoogleSheets(false);
@@ -1661,7 +1666,7 @@ function hexToRgbString(hex: string, fallback: string = '236, 72, 153'): string 
         pullDataFromGoogleSheets(false);
       }, 15000);
       return () => {
-        clearTimeout(maxLoadTimer);
+        clearTimeout(safetyFallbackTimer);
         clearInterval(interval);
       };
     } else {
@@ -1670,7 +1675,7 @@ function hexToRgbString(hex: string, fallback: string = '236, 72, 153'): string 
         isFirstLoad.current = false;
         setShowOfferAnnouncement(true);
       }
-      return () => clearTimeout(maxLoadTimer);
+      return () => clearTimeout(safetyFallbackTimer);
     }
   }, [settings?.googleAppsScriptUrl]);
 
