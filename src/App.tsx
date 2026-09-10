@@ -445,7 +445,9 @@ export function App() {
   useEffect(() => {
     const handleOnline = async () => {
       setIsOnline(true);
-      handleTriggerSync();
+      // ALWAYS pull fresh data from Google Sheets when coming online
+      // NEVER overwrite Google Sheets with local state automatically!
+      pullDataFromGoogleSheets(false);
     };
     const handleOffline = () => setIsOnline(false);
 
@@ -1596,40 +1598,13 @@ function hexToRgbString(hex: string, fallback: string = '236, 72, 153'): string 
     }
   };
 
-  // Trigger manual smart sync directly with Google Sheets Web App for ALL sheets
+  // Trigger manual smart sync directly with Google Sheets Web App for ALL sheets (Safe PULL from Google Sheets)
   const handleTriggerSync = async () => {
     setIsSyncing(true);
     setSyncStatus('syncing');
     try {
       if (settings?.googleAppsScriptUrl && settings.googleAppsScriptUrl.trim().startsWith('http')) {
-        const fullPayload = buildFullSyncPayload({
-          products,
-          settings,
-          employees,
-          categories,
-          orders,
-          customers,
-          suppliers,
-          invoices,
-          offers,
-          coupons,
-          currencies,
-          auditLogs,
-          affiliates: partners
-        });
-
-        const res = await sendToGoogleAppsScriptWebApp(settings.googleAppsScriptUrl, fullPayload);
-        if (res.success) {
-          setSyncStatus('synced');
-          addNotification(
-            '📊 Google Sheets',
-            'تم تحديث وتعبئة كافة أوراق العمل (الإعدادات، الموظفين، المنتجات، التصنيفات، الطلبات، المسوقين، وسجل العمليات) بنجاح!',
-            'sync'
-          );
-        } else {
-          setSyncStatus('error');
-          addNotification('⚠️ تنبيه المزامنة', res.message, 'warning');
-        }
+        await pullDataFromGoogleSheets(true);
       } else {
         setSyncStatus('synced');
         addNotification(
@@ -2547,6 +2522,7 @@ ${newInvoice.itemsSummary}
               onToggleWishlist={handleToggleWishlist}
               onOpenTracking={() => handleOpenTracking()}
               onOpenPolicies={(tab) => handleOpenPolicies(tab || 'verification')}
+              onRefreshStore={() => pullDataFromGoogleSheets(true)}
             />
           </main>
 

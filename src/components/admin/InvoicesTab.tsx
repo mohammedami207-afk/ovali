@@ -39,7 +39,7 @@ export const InvoicesTab: React.FC<InvoicesTabProps> = ({ invoices, settings }) 
   });
 
   const storeName = settings?.storeName || 'المتجر الإلكتروني';
-  const storeLogo = settings?.storeLogoUrl || 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=200&auto=format&fit=crop&q=80';
+  const storeLogo = settings?.storeLogoUrl || '';
   const taxNum = settings?.taxNumber || '310123456700003';
   const storeAddress = settings?.storeAddress || 'الرياض / صنعاء - المملكة العربية السعودية واليمن';
   const saudiPhone = settings?.storePhoneSaudi || '966599539659';

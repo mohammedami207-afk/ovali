@@ -120,42 +120,67 @@ export const SocialLinksMenu: React.FC<SocialLinksMenuProps> = ({
         </motion.button>
       )}
 
-      {/* 2. MIDDLE FLOATING BUTTON: Compact Cart Button with Continuous Rotating / Spinning Effect */}
+      {/* 2. MIDDLE FLOATING BUTTON: Multi-Color Rainbow Hue-Rotating Cart Button */}
       {onOpenCart && (
         <motion.button
           onClick={onOpenCart}
-          whileHover={{ scale: 1.12 }}
+          whileHover={{ scale: 1.22, rotate: 12 }}
           whileTap={{ scale: 0.9 }}
-          className="group w-7.5 h-7.5 sm:w-8 sm:h-8 bg-gradient-to-tr from-rose-600 via-pink-600 to-amber-500 text-white rounded-full shadow-md shadow-rose-500/30 hover:shadow-rose-500/60 transition-all flex items-center justify-center relative border-2 border-white/60 cursor-pointer"
+          animate={{
+            filter: [
+              'hue-rotate(0deg) drop-shadow(0 0 6px rgba(244, 63, 94, 0.7))',
+              'hue-rotate(90deg) drop-shadow(0 0 6px rgba(234, 179, 8, 0.7))',
+              'hue-rotate(180deg) drop-shadow(0 0 6px rgba(6, 182, 212, 0.7))',
+              'hue-rotate(270deg) drop-shadow(0 0 6px rgba(168, 85, 247, 0.7))',
+              'hue-rotate(360deg) drop-shadow(0 0 6px rgba(244, 63, 94, 0.7))'
+            ]
+          }}
+          transition={{
+            duration: 5,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+          className="group w-8 h-8 sm:w-8.5 sm:h-8.5 bg-gradient-to-tr from-rose-500 via-amber-400 via-cyan-400 to-purple-600 text-white rounded-full shadow-lg transition-all flex items-center justify-center relative border-2 border-white cursor-pointer"
           title={`سلة التسوق (${cartCount})`}
           aria-label="سلة التسوق"
         >
-          {/* Rotating Circular Ring effect around cart */}
+          {/* Rotating Outer Dashed Rainbow Ring Effect */}
           <motion.span 
-            className="absolute -inset-0.5 rounded-full border border-dashed border-white/70 pointer-events-none"
+            className="absolute -inset-1 rounded-full border-2 border-dashed border-yellow-300/90 pointer-events-none"
             animate={{ rotate: 360 }}
-            transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
+            transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
           />
 
           {/* Interactive Radar Ring Effect */}
-          <span className="absolute -inset-0.5 rounded-full bg-rose-500/25 animate-ping pointer-events-none" />
+          <span className="absolute -inset-0.5 rounded-full bg-yellow-400/30 animate-ping pointer-events-none" />
 
-          {/* Cart Icon with Smooth Continuous Circular Wobble / Spin Animation */}
+          {/* Cart Icon with Smooth Continuous Circular Spin & Bounce */}
           <motion.div
-            animate={{ rotate: [0, 12, 0, -12, 0] }}
-            transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+            animate={{ 
+              rotate: [0, 15, -15, 0],
+              scale: [1, 1.15, 0.95, 1] 
+            }}
+            transition={{ 
+              duration: 2.2, 
+              repeat: Infinity, 
+              ease: "easeInOut" 
+            }}
             className="z-10"
           >
-            <ShoppingCart className="w-3.5 h-3.5 text-white drop-shadow-sm" />
+            <ShoppingCart className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white drop-shadow-md stroke-[2.3]" />
           </motion.div>
 
           {/* Cart Badge with Item Count */}
           {cartCount > 0 ? (
-            <span className="absolute -top-1 -right-1 bg-slate-950 text-white border border-white font-mono text-[8px] min-w-[15px] h-[15px] px-0.5 rounded-full flex items-center justify-center shadow-md font-black z-20 animate-bounce">
+            <motion.span 
+              animate={{ scale: [1, 1.25, 1] }}
+              transition={{ duration: 1.2, repeat: Infinity }}
+              className="absolute -top-1.5 -right-1.5 bg-red-600 text-white border-2 border-white font-mono text-[8px] sm:text-[9px] min-w-[16px] h-[16px] px-0.5 rounded-full flex items-center justify-center shadow-lg font-black z-20"
+            >
               {cartCount}
-            </span>
+            </motion.span>
           ) : (
-            <span className="absolute top-0 right-0 w-2 h-2 bg-emerald-400 border border-white rounded-full z-20 animate-pulse" />
+            <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-white rounded-full z-20 animate-ping" />
           )}
 
           {/* Hover Tooltip Label */}

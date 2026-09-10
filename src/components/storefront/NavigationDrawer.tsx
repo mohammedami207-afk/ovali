@@ -155,7 +155,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
         {/* Drawer Header */}
         <div className="p-4 border-b border-theme-card flex items-center justify-between bg-theme-inner">
           <div className="flex items-center gap-3">
-            {settings?.storeLogoUrl ? (
+            {settings?.storeLogoUrl && settings.storeLogoUrl.trim() ? (
               <img src={settings.storeLogoUrl} alt="Logo" className="w-9 h-9 rounded-xl object-contain bg-theme-card border border-theme-card p-0.5" />
             ) : (
               <div className="w-9 h-9 rounded-xl bg-theme-gradient flex items-center justify-center text-white font-black text-sm shadow-md">

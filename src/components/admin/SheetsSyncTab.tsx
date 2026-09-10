@@ -146,16 +146,15 @@ export const SheetsSyncTab: React.FC<SheetsSyncTabProps> = ({
         await onTriggerSync();
         setSheetsSyncMsg({
           success: true,
-          text: '✅ تمت المزامنة الشاملة لجميع الأوراق الـ 9 (المنتجات، الإعدادات، الموظفين، التصنيفات، الطلبات، العملاء، الموردين، الفواتير، العروض) بنجاح!'
+          text: '✅ تمت جلب وتحديث كافة أوراق العمل من شيت جوجل بنجاح!'
         });
       } else {
         const res = await sendToGoogleAppsScriptWebApp(googleWebAppUrl, {
-          action: 'sync_all',
-          products: products
+          action: 'read_all'
         });
         setSheetsSyncMsg({
           success: res.success,
-          text: res.message
+          text: res.message || 'تم تحديث البيانات بنجاح'
         });
       }
     } catch (err: any) {

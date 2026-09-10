@@ -2,16 +2,16 @@ import { Product, Category, Customer, Order, Invoice, Employee, Supplier, Offer,
 import { initialProducts, initialCategories, initialCustomers, initialOrders, initialInvoices, initialEmployees, initialSuppliers, initialOffers, initialCoupons, initialCurrencies, defaultSettings, initialSubscriptions, initialAbandonedCarts } from '../data/initialData';
 
 const KEYS = {
-  PRODUCTS: 'shein_products_v1',
-  CATEGORIES: 'shein_categories_v1',
-  CUSTOMERS: 'shein_customers_v1',
-  ORDERS: 'shein_orders_v1',
-  INVOICES: 'shein_invoices_v1',
-  EMPLOYEES: 'shein_employees_v1',
-  SUPPLIERS: 'shein_suppliers_v1',
-  OFFERS: 'shein_offers_v1',
-  COUPONS: 'shein_coupons_v1',
-  CURRENCIES: 'shein_currencies_v1',
+  PRODUCTS: 'shein_products_v2',
+  CATEGORIES: 'shein_categories_v2',
+  CUSTOMERS: 'shein_customers_v2',
+  ORDERS: 'shein_orders_v2',
+  INVOICES: 'shein_invoices_v2',
+  EMPLOYEES: 'shein_employees_v2',
+  SUPPLIERS: 'shein_suppliers_v2',
+  OFFERS: 'shein_offers_v2',
+  COUPONS: 'shein_coupons_v2',
+  CURRENCIES: 'shein_currencies_v2',
   SETTINGS: 'shein_settings_v1',
   AUDIT_LOGS: 'shein_audit_logs_v1',
   PENDING_SYNC: 'shein_pending_sync_v1',
@@ -109,8 +109,8 @@ export const sanitizeAndDeduplicateProducts = (products: Product[]): Product[] =
 
 export const getLocalProducts = (): Product[] => {
   const data = loadLocalData(KEYS.PRODUCTS, initialProducts);
-  if (!Array.isArray(data) || data.length === 0) {
-    return sanitizeAndDeduplicateProducts(initialProducts);
+  if (!Array.isArray(data)) {
+    return [];
   }
   return sanitizeAndDeduplicateProducts(data);
 };

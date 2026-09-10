@@ -1218,7 +1218,7 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
               {/* Header */}
               <div className="flex justify-between items-start border-b pb-2">
                 <div className="flex items-center gap-2">
-                  {settings?.storeLogoUrl ? (
+                  {settings?.storeLogoUrl && settings.storeLogoUrl.trim() ? (
                     <img src={settings.storeLogoUrl} alt="logo" className="w-10 h-10 object-contain rounded-lg border bg-slate-50" />
                   ) : (
                     <div className="w-10 h-10 rounded-lg bg-indigo-50 border flex items-center justify-center font-bold text-indigo-900 text-xs">M</div>

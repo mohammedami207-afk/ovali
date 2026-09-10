@@ -65,6 +65,7 @@ interface StoreHomeProps {
   onToggleWishlist?: (productId: string) => void;
   onOpenTracking?: () => void;
   onOpenPolicies?: (tab?: any) => void;
+  onRefreshStore?: () => void;
 }
 
 export const StoreHome: React.FC<StoreHomeProps & { onOpenCatalog?: () => void }> = ({
@@ -85,7 +86,8 @@ export const StoreHome: React.FC<StoreHomeProps & { onOpenCatalog?: () => void }
   wishlist = [],
   onToggleWishlist,
   onOpenTracking,
-  onOpenPolicies
+  onOpenPolicies,
+  onRefreshStore
 }) => {
   const [filterDiscountOnly, setFilterDiscountOnly] = useState(false);
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
@@ -899,19 +901,42 @@ export const StoreHome: React.FC<StoreHomeProps & { onOpenCatalog?: () => void }
         </div>
 
         {displayedProducts.length === 0 ? (
-          <div className="text-center py-20 bg-theme-card border border-theme-card rounded-3xl space-y-3">
-            <p className="text-sm font-bold text-theme-subtext">لا توجد منتجات تطابق البحث والفلترة الحالية</p>
-            <button
-              onClick={() => { 
-                setSelectedCategory('all'); 
-                setFilterDiscountOnly(false); 
-                setMinPrice(''); 
-                setMaxPrice('');
-              }}
-              className="px-4 py-2 bg-theme-inner hover:bg-theme-card border border-theme-card text-theme-main text-xs font-bold rounded-xl cursor-pointer"
-            >
-              عرض كافة المنتجات
-            </button>
+          <div className="text-center py-20 bg-theme-card border border-theme-card rounded-3xl space-y-4 max-w-lg mx-auto p-6 shadow-sm">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto text-3xl font-black">
+              📦
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-base font-black text-theme-main">
+                {products.length === 0 ? 'لا توجد بيانات أو منتجات متاحة حالياً' : 'لا توجد منتجات تطابق البحث والفلترة الحالية'}
+              </p>
+              <p className="text-xs text-theme-subtext font-medium leading-relaxed">
+                {products.length === 0 
+                  ? 'يرجى التأكد من إضافة الأصناف والمنتجات في جدول Google Sheets والتأكد من الاتصال بقاعدة البيانات.' 
+                  : 'جرب تغيير كلمة البحث أو إلغاء تصفية الفئات والأسعار.'}
+              </p>
+            </div>
+            {products.length === 0 ? (
+              <button
+                type="button"
+                onClick={() => onRefreshStore && onRefreshStore()}
+                className="px-5 py-2.5 bg-theme-gradient text-white text-xs font-bold rounded-xl shadow-md hover:opacity-90 transition-all cursor-pointer inline-flex items-center gap-2"
+              >
+                <span>🔄 إعادة التحديث والمزامنة مع أكسل</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => { 
+                  setSelectedCategory('all'); 
+                  setFilterDiscountOnly(false); 
+                  setMinPrice(''); 
+                  setMaxPrice('');
+                }}
+                className="px-4 py-2 bg-theme-inner hover:bg-theme-card border border-theme-card text-theme-main text-xs font-bold rounded-xl cursor-pointer"
+              >
+                عرض كافة المنتجات
+              </button>
+            )}
           </div>
         ) : (
           <div className="space-y-4">
