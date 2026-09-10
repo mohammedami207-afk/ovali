@@ -1416,14 +1416,56 @@ export function App() {
       });
     }
 
-    if (settings.storeLogoUrl) {
-      let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
+    const logoUrlToUse = settings.storeLogoUrl?.trim() || 'https://www.hbhoz.id/foto_logo/4637980-Ovale.jpg';
+
+    // Update Favicons, Shortcut Icon and Apple Touch Icon for PWA & Browser tabs
+    ['icon', 'shortcut icon', 'apple-touch-icon'].forEach((relType) => {
+      let link: HTMLLinkElement | null = document.querySelector(`link[rel='${relType}']`) || document.querySelector(`link[rel*='${relType}']`);
       if (!link) {
         link = document.createElement('link');
-        link.rel = 'shortcut icon';
+        link.rel = relType;
         document.head.appendChild(link);
       }
-      link.href = settings.storeLogoUrl;
+      link.href = logoUrlToUse;
+    });
+
+    // Dynamic Manifest Injection for Chrome PWA "تثبيت هذه الصفحة كتطبيق" dialog
+    try {
+      let manifestLink: HTMLLinkElement | null = document.querySelector("link[rel='manifest']");
+      if (!manifestLink) {
+        manifestLink = document.createElement('link');
+        manifestLink.rel = 'manifest';
+        document.head.appendChild(manifestLink);
+      }
+
+      const dynamicManifest = {
+        name: settings.storeName || 'اوفالي',
+        short_name: settings.storeName || 'اوفالي',
+        description: settings.storeTagline || 'شريكك الأول للتسوق الموثوق والآمن',
+        start_url: '/',
+        display: 'standalone',
+        background_color: settings.themeBgColor || '#090d16',
+        theme_color: settings.themePrimaryColor || '#ec4899',
+        icons: [
+          {
+            src: logoUrlToUse,
+            sizes: '192x192',
+            type: 'image/jpeg',
+            purpose: 'any maskable'
+          },
+          {
+            src: logoUrlToUse,
+            sizes: '512x512',
+            type: 'image/jpeg',
+            purpose: 'any maskable'
+          }
+        ]
+      };
+      const stringManifest = JSON.stringify(dynamicManifest);
+      const blob = new Blob([stringManifest], { type: 'application/manifest+json' });
+      manifestLink.href = URL.createObjectURL(blob);
+    } catch (e) {
+      console.debug('Dynamic manifest creation error:', e);
     }
   }, [
     settings.storeName, 

@@ -93,9 +93,23 @@ export const urlToFile = async (url: string, filename: string = 'product_image.j
       return new File([u8arr], filename, { type: mime });
     }
 
-    const response = await fetch(url, { mode: 'cors' });
-    const blob = await response.blob();
-    return new File([blob], filename, { type: blob.type || 'image/jpeg' });
+    try {
+      const response = await fetch(url, { mode: 'cors' });
+      if (response.ok) {
+        const blob = await response.blob();
+        return new File([blob], filename, { type: blob.type || 'image/jpeg' });
+      }
+    } catch (directErr) {
+      // Direct fetch failed due to CORS, fallback to wsrv.nl proxy
+    }
+
+    const proxyUrl = `https://wsrv.nl/?url=${encodeURIComponent(url)}`;
+    const proxyRes = await fetch(proxyUrl);
+    if (proxyRes.ok) {
+      const blob = await proxyRes.blob();
+      return new File([blob], filename, { type: blob.type || 'image/jpeg' });
+    }
+    return null;
   } catch (error) {
     console.warn('Could not convert image URL to File for sharing:', error);
     return null;

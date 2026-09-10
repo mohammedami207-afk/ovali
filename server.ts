@@ -108,7 +108,7 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml
     storeName: 'متجر Ovali الإلكتروني',
     storeTagline: 'تسوق أحدث الفساتين والملابس والمنتجات الفاخرة بعروض وخصومات مميزة! توصيل سريع للسعودية واليمن. اضغط للتسوق الآن!',
     heroTitle: 'أحدث صيحات الموضة والأزياء بين يديك',
-    storeLogoUrl: 'https://cdn.salla.sa/NGyPX/5037f064-b7f2-4368-b2f7-0bf1d937ba9a-500x500-s2LXAeZgLJzjKejSiGHeYNvn5OvryzifSllilKCQ.jpg',
+    storeLogoUrl: 'https://www.hbhoz.id/foto_logo/4637980-Ovale.jpg',
     heroSubtitle: '',
   };
 
@@ -120,6 +120,36 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml
       console.error('Failed to parse cached settings file:', e);
     }
   }
+
+  // Serve Dynamic Web App Manifest for PWA installation dialog
+  app.get(['/manifest.json', '/manifest.webmanifest'], (req, res) => {
+    const logo = cachedSettings.storeLogoUrl || 'https://www.hbhoz.id/foto_logo/4637980-Ovale.jpg';
+    const manifest = {
+      name: cachedSettings.storeName || 'اوفالي',
+      short_name: cachedSettings.storeName || 'اوفالي',
+      description: cachedSettings.storeTagline || 'شريكك الأول للتسوق الموثوق والآمن',
+      start_url: '/',
+      display: 'standalone',
+      background_color: '#090d16',
+      theme_color: '#ec4899',
+      icons: [
+        {
+          src: logo,
+          sizes: '192x192',
+          type: 'image/jpeg',
+          purpose: 'any maskable'
+        },
+        {
+          src: logo,
+          sizes: '512x512',
+          type: 'image/jpeg',
+          purpose: 'any maskable'
+        }
+      ]
+    };
+    res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+    res.send(JSON.stringify(manifest));
+  });
 
   // API to save settings on the server side for dynamic sharing preview metadata
   app.post('/api/store-settings', (req, res) => {
@@ -149,7 +179,7 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml
     let description = '';
     let imageUrl = '';
 
-    const defaultImg = 'https://cdn.salla.sa/NGyPX/5037f064-b7f2-4368-b2f7-0bf1d937ba9a-500x500-s2LXAeZgLJzjKejSiGHeYNvn5OvryzifSllilKCQ.jpg';
+    const defaultImg = 'https://www.hbhoz.id/foto_logo/4637980-Ovale.jpg';
 
     if (hasProductQuery) {
       // Product Sharing Meta Tags

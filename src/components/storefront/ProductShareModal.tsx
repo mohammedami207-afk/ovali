@@ -97,6 +97,63 @@ export const ProductShareModal: React.FC<ProductShareModalProps> = ({
     }
   };
 
+  // Robust Image Loader for Canvas (Bypasses CDN CORS issues using wsrv.nl proxy)
+  const loadCanvasImage = (originalUrl: string): Promise<{ img: HTMLImageElement; loaded: boolean }> => {
+    return new Promise((resolve) => {
+      if (!originalUrl || !originalUrl.trim()) {
+        return resolve({ img: new Image(), loaded: false });
+      }
+
+      const cleanUrl = originalUrl.trim();
+
+      const tryLoad = (src: string, useCrossOrigin: boolean): Promise<HTMLImageElement | null> => {
+        return new Promise((res) => {
+          const imageElement = new Image();
+          if (useCrossOrigin) {
+            imageElement.crossOrigin = 'anonymous';
+          }
+          imageElement.onload = () => res(imageElement);
+          imageElement.onerror = () => res(null);
+          imageElement.src = src;
+        });
+      };
+
+      (async () => {
+        // 1. Try wsrv.nl CORS proxy first for external URLs
+        if (!cleanUrl.startsWith('data:')) {
+          const proxyUrl = `https://wsrv.nl/?url=${encodeURIComponent(cleanUrl)}`;
+          const imgProxy = await tryLoad(proxyUrl, true);
+          if (imgProxy && imgProxy.width > 0 && imgProxy.height > 0) {
+            return resolve({ img: imgProxy, loaded: true });
+          }
+        }
+
+        // 2. Try direct load with crossOrigin
+        const imgDirect = await tryLoad(cleanUrl, true);
+        if (imgDirect && imgDirect.width > 0 && imgDirect.height > 0) {
+          return resolve({ img: imgDirect, loaded: true });
+        }
+
+        // 3. Try Weserv backup proxy
+        if (!cleanUrl.startsWith('data:')) {
+          const proxyUrl2 = `https://images.weserv.nl/?url=${encodeURIComponent(cleanUrl)}`;
+          const imgProxy2 = await tryLoad(proxyUrl2, true);
+          if (imgProxy2 && imgProxy2.width > 0 && imgProxy2.height > 0) {
+            return resolve({ img: imgProxy2, loaded: true });
+          }
+        }
+
+        // 4. Try without crossOrigin as last resort
+        const imgNoCors = await tryLoad(cleanUrl, false);
+        if (imgNoCors && imgNoCors.width > 0 && imgNoCors.height > 0) {
+          return resolve({ img: imgNoCors, loaded: true });
+        }
+
+        resolve({ img: new Image(), loaded: false });
+      })();
+    });
+  };
+
   // Generate High-Quality Marketing Card Canvas
   const handleGenerateMarketingCard = async (themeToUse = cardTheme) => {
     setIsGenerating(true);
@@ -140,30 +197,44 @@ export const ProductShareModal: React.FC<ProductShareModalProps> = ({
       ctx.lineWidth = 3;
       ctx.strokeRect(45, 45, 990, 990);
 
-      // Store Header
+      // Store Logo & Header
+      const storeLogoUrl = settings?.storeLogoUrl || '';
+      let logoImgLoaded = false;
+      let logoImg: HTMLImageElement | null = null;
+      if (storeLogoUrl) {
+        const logoRes = await loadCanvasImage(storeLogoUrl);
+        logoImgLoaded = logoRes.loaded;
+        logoImg = logoRes.img;
+      }
+
       ctx.fillStyle = isLight ? '#6d28d9' : '#f59e0b';
       ctx.font = 'bold 40px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(`👑 ${settings?.storeName || 'المتجر الإلكتروني'} 👑`, 540, 105);
+
+      if (logoImgLoaded && logoImg) {
+        // Draw store logo image next to store name
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(420, 95, 32, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.drawImage(logoImg, 388, 63, 64, 64);
+        ctx.restore();
+
+        ctx.fillText(`${settings?.storeName || 'اوفالي'}`, 570, 105);
+      } else {
+        ctx.fillText(`👑 ${settings?.storeName || 'اوفالي'} 👑`, 540, 105);
+      }
 
       ctx.fillStyle = isLight ? '#64748b' : '#cbd5e1';
       ctx.font = '22px sans-serif';
       ctx.fillText(`العرض المميز • وقت العرض: ${timeAgo}`, 540, 145);
 
-      // Load product image safely with fallback
+      // Load product image safely with wsrv.nl proxy fallback
       const imageUrl = (product.images && product.images[0] && product.images[0].trim())
         ? product.images[0]
         : 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=800';
 
-      let imgLoaded = false;
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-
-      await new Promise((resolve) => {
-        img.onload = () => { imgLoaded = true; resolve(true); };
-        img.onerror = () => { resolve(false); };
-        img.src = imageUrl;
-      });
+      const { img, loaded: imgLoaded } = await loadCanvasImage(imageUrl);
 
       // Draw image container box
       const imgBoxX = 140;
@@ -179,6 +250,7 @@ export const ProductShareModal: React.FC<ProductShareModalProps> = ({
       ctx.fillStyle = isLight ? '#f1f5f9' : '#0f172a';
       ctx.fillRect(imgBoxX, imgBoxY, imgBoxW, imgBoxH);
 
+      let actualDrawn = false;
       if (imgLoaded && img.width && img.height) {
         const imgRatio = img.width / img.height;
         const containerRatio = imgBoxW / imgBoxH;
@@ -197,13 +269,14 @@ export const ProductShareModal: React.FC<ProductShareModalProps> = ({
 
         try {
           ctx.drawImage(img, drawX, drawY, drawW, drawH);
+          actualDrawn = true;
         } catch (e) {
-          console.warn('Canvas image draw error or CORS blocked, rendering fallback text box');
-          imgLoaded = false;
+          console.warn('Canvas image draw exception', e);
+          actualDrawn = false;
         }
       }
 
-      if (!imgLoaded) {
+      if (!actualDrawn) {
         // Fallback placeholder image box
         ctx.fillStyle = isLight ? '#e2e8f0' : '#1e293b';
         ctx.fillRect(imgBoxX, imgBoxY, imgBoxW, imgBoxH);

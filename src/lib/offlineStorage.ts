@@ -297,6 +297,11 @@ export const getLocalSettings = (): AppSettings => {
     loaded.defaultStoreUrl = defaultUrl;
     changed = true;
   }
+  if (!loaded.storeLogoUrl && defaultSettings.storeLogoUrl) {
+    loaded.storeLogoUrl = defaultSettings.storeLogoUrl;
+    changed = true;
+  }
+
   if (!loaded.themePrimaryColor) {
     loaded.themePreset = defaultSettings.themePreset || 'shein_pink';
     loaded.themePrimaryColor = defaultSettings.themePrimaryColor || '#ec4899';
