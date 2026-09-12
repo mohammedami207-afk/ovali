@@ -418,10 +418,24 @@ export const ProductsTab: React.FC<ProductsTabProps> = ({
       return;
     }
 
-    const finalImages = [
-      imagesList[0] || '',
-      imagesList[1] || ''
-    ];
+    let slot0 = imagesList[0] || '';
+    let slot1 = imagesList[1] || '';
+
+    // If user pasted a URL in newImageUrl input without clicking "+ إضافة رابط", auto-merge it
+    if (newImageUrl && newImageUrl.trim()) {
+      const normalized = normalizeImageUrl(newImageUrl.trim());
+      if (normalized) {
+        if (!slot0) {
+          slot0 = normalized;
+        } else if (!slot1) {
+          slot1 = normalized;
+        } else {
+          slot0 = normalized;
+        }
+      }
+    }
+
+    const finalImages = [slot0, slot1];
 
     const newProd: Product = {
       ProductID: editingProduct ? editingProduct.ProductID : `PRD_${Date.now()}`,
@@ -672,6 +686,7 @@ export const ProductsTab: React.FC<ProductsTabProps> = ({
               <tr>
                 <th className="p-3 font-bold">الصور (صورتان حسب الإكسل)</th>
                 <th className="p-3 font-bold">اسم المنتج والتصنيف</th>
+                <th className="p-3 text-center font-bold">الإجراءات</th>
                 <th className="p-3 font-bold">SKU / الباركود</th>
                 <th className="p-3 font-bold">التكلفة</th>
                 <th className="p-3 font-bold">سعر البيع</th>
@@ -679,7 +694,6 @@ export const ProductsTab: React.FC<ProductsTabProps> = ({
                 <th className="p-3 font-bold">التقييمات</th>
                 <th className="p-3 font-bold">المخزون المتاح</th>
                 <th className="p-3 font-bold">تاريخ الرفع ومدة العرض</th>
-                <th className="p-3 text-center font-bold">الإجراءات</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 whitespace-nowrap">
@@ -770,6 +784,24 @@ export const ProductsTab: React.FC<ProductsTabProps> = ({
                     <p className="font-bold text-white max-w-xs truncate">{p.name}</p>
                     <span className="text-[10px] text-pink-400 font-semibold">{p.category}</span>
                   </td>
+                  <td className="p-3 text-center">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <button
+                        onClick={() => startEdit(p)}
+                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white transition-colors"
+                        title="تعديل المنتج"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => onDeleteProduct(p.ProductID)}
+                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white transition-colors"
+                        title="حذف المنتج"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </td>
                   <td className="p-3">
                     <div className="flex flex-col gap-1">
                       <IdBadge id={p.SKU || p.ProductID} color="indigo" tooltip="رمز المنتج (SKU/ID) - انقر للنسخ والبحث في شيت المنتجات" />
@@ -817,22 +849,6 @@ export const ProductsTab: React.FC<ProductsTabProps> = ({
                         <Clock className="w-2.5 h-2.5 text-amber-400 shrink-0" />
                         <span>{formatRelativeTime(p.createdAt || p.updatedAt)}</span>
                       </div>
-                    </div>
-                  </td>
-                  <td className="p-3 text-center">
-                    <div className="flex items-center justify-center gap-1.5">
-                      <button
-                        onClick={() => startEdit(p)}
-                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white transition-colors"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => onDeleteProduct(p.ProductID)}
-                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
                     </div>
                   </td>
                 </tr>

@@ -1922,26 +1922,13 @@ ${newInvoice.itemsSummary}
   };
 
   // Product Admin Operations
+  // Product Admin Operations
   const handleAddProduct = async (p: Product) => {
     if (settings?.planMaxProducts && settings.planMaxProducts > 0 && products.length >= settings.planMaxProducts) {
       alert(`عذراً، وصل المتجر للحد الأقصى المسموح به للمنتجات في باقته الحالية (${settings.planMaxProducts} منتج).\n\nممنوع الإضافة! يرجى التواصل مع إدارة المتجر/المنصة لترقية الباقة والتوسع.`);
       return;
     }
-    const hasSheet = Boolean(settings?.googleAppsScriptUrl && settings.googleAppsScriptUrl.trim().startsWith('http'));
 
-    if (hasSheet) {
-      setIsGlobalLoading(true);
-      setGlobalLoadingMessage('جارٍ حفظ المنتج والتأكد من البيانات...');
-      const isAlive = await pingGoogleAppsScript(settings.googleAppsScriptUrl);
-      if (!isAlive && !isOnline) {
-        setIsGlobalLoading(false);
-        addNotification('❌ لا يوجد اتصال', 'لا يوجد اتصال بجداول Google Sheets. لا يمكن إضافة الصنف.', 'warning');
-        setSyncStatus('error');
-        return;
-      }
-    }
-
-    setSyncStatus('syncing');
     const rawImages = Array.isArray(p.images) ? p.images : [];
     const col1 = rawImages[0] !== undefined ? String(rawImages[0]).trim() : '';
     const col2 = rawImages[1] !== undefined ? String(rawImages[1]).trim() : '';
@@ -1955,6 +1942,7 @@ ${newInvoice.itemsSummary}
       updatedAt: nowIso
     };
 
+    // ⚡ Instant Local Save (Optimistic UI - 0ms delay)
     setProducts(prev => {
       const newList = [cleanProduct, ...prev];
       saveLocalProducts(newList);
@@ -1962,69 +1950,46 @@ ${newInvoice.itemsSummary}
     });
     addAuditLog('مدير النظام', 'إضافة منتج', `تم إضافة المنتج ${cleanProduct.name}`);
 
-    if (hasSheet) {
-      try {
-        const res = await sendToGoogleAppsScriptWebApp(settings.googleAppsScriptUrl, {
-          action: 'save_product',
-          product: cleanProduct
-        });
+    const hasSheet = Boolean(settings?.googleAppsScriptUrl && settings.googleAppsScriptUrl.trim().startsWith('http'));
+    if (hasSheet && isOnline) {
+      setSyncStatus('syncing');
+      
+      // Asynchronous background sync - non-blocking!
+      sendToGoogleAppsScriptWebApp(settings.googleAppsScriptUrl, {
+        action: 'save_product',
+        product: cleanProduct
+      }).then(res => {
         if (res.success) {
           setSyncStatus('synced');
-          addNotification('📊 Google Sheets', `تم رفع وتحديث المنتج "${cleanProduct.name}" في شيت جوجل فورياً!`, 'sync');
-          pullDataFromGoogleSheets(false);
+          addNotification('📊 Google Sheets', `تم حفظ المنتج "${cleanProduct.name}" في شيت جوجل بنجاح!`, 'sync');
         } else {
           setSyncStatus('error');
-          addNotification('⚠️ خطأ في المزامنة', res.message, 'warning');
+          addNotification('⚠️ تنبيه المزامنة', res.message || 'تم الحفظ محلياً فقط', 'warning');
         }
-      } catch (err: any) {
+      }).catch(() => {
         setSyncStatus('error');
-        addNotification('❌ خطأ في الربط', err.message || 'فشلت المزامنة مع شيت جوجل', 'warning');
-      } finally {
-        setIsGlobalLoading(false);
-      }
+        addNotification('❌ تنبيه المزامنة', 'تعذر الاتصال بـ Google Sheets، تم الحفظ محلياً', 'warning');
+      });
     } else {
       setSyncStatus('synced');
-      setIsGlobalLoading(false);
     }
   };
 
   const handleUpdateProduct = async (updated: Product) => {
     if (!updated || !updated.ProductID) return;
 
-    const hasSheet = Boolean(settings?.googleAppsScriptUrl && settings.googleAppsScriptUrl.trim().startsWith('http'));
-
-    if (hasSheet) {
-      setIsGlobalLoading(true);
-      setGlobalLoadingMessage('جارٍ تحديث المنتج والمزامنة...');
-      const isAlive = await pingGoogleAppsScript(settings.googleAppsScriptUrl);
-      if (!isAlive && !isOnline) {
-        setIsGlobalLoading(false);
-        addNotification('❌ لا يوجد اتصال', 'لا يوجد اتصال بجداول Google Sheets. لا يمكن تعديل الصنف.', 'warning');
-        setSyncStatus('error');
-        return;
-      }
-    }
-
-    setSyncStatus('syncing');
-    
-    // Unique slot identifiers for image tracking to eliminate conflict when updating a single image
+    // Unique slot identifiers for image tracking
     const existingProd = products.find(p => p.ProductID === updated.ProductID);
     const existingImgs = Array.isArray(existingProd?.images) ? existingProd.images : [];
     const updatedImgs = Array.isArray(updated.images) ? updated.images : [];
 
-    // Slot 1 (Primary - Column H) and Slot 2 (Secondary - Column I)
-    const slot1 = (updatedImgs.length > 0 && updatedImgs[0] !== undefined)
-      ? String(updatedImgs[0]).trim()
-      : (existingImgs[0] ? String(existingImgs[0]).trim() : '');
-
-    const slot2 = (updatedImgs.length > 1 && updatedImgs[1] !== undefined)
-      ? String(updatedImgs[1]).trim()
-      : (existingImgs[1] ? String(existingImgs[1]).trim() : '');
+    // Primary & Secondary Image slots
+    const slot1 = updatedImgs.length > 0 ? String(updatedImgs[0] || '').trim() : (existingImgs[0] ? String(existingImgs[0]).trim() : '');
+    const slot2 = updatedImgs.length > 1 ? String(updatedImgs[1] || '').trim() : '';
 
     const finalImages = [slot1, slot2];
 
     const nowIso = new Date().toISOString();
-    // Immutable createdAt: Keep the original createdAt permanently, never overwrite on update
     const fixedCreatedAt = existingProd?.createdAt || updated.createdAt || nowIso;
 
     const cleanUpdated: Product = {
@@ -2034,6 +1999,7 @@ ${newInvoice.itemsSummary}
       updatedAt: nowIso
     };
 
+    // ⚡ Instant Local Save (Optimistic UI - 0ms delay)
     setProducts(prev => {
       const updatedList = prev.map(p => p.ProductID === cleanUpdated.ProductID ? cleanUpdated : p);
       saveLocalProducts(updatedList);
@@ -2042,90 +2008,70 @@ ${newInvoice.itemsSummary}
 
     addAuditLog('مدير النظام', 'تعديل منتج', `تم تعديل بيانات المنتج ${cleanUpdated.name} (SKU: ${cleanUpdated.SKU})`);
 
-    if (hasSheet) {
-      try {
-        const res = await sendToGoogleAppsScriptWebApp(settings.googleAppsScriptUrl, {
-          action: 'save_product',
-          product: cleanUpdated,
-          imageSlots: {
-            slot0: { id: `IMG_${cleanUpdated.ProductID}_SLOT_0`, url: slot1 },
-            slot1: { id: `IMG_${cleanUpdated.ProductID}_SLOT_1`, url: slot2 }
-          }
-        });
+    const hasSheet = Boolean(settings?.googleAppsScriptUrl && settings.googleAppsScriptUrl.trim().startsWith('http'));
+    if (hasSheet && isOnline) {
+      setSyncStatus('syncing');
+      
+      // Asynchronous background sync - non-blocking!
+      sendToGoogleAppsScriptWebApp(settings.googleAppsScriptUrl, {
+        action: 'save_product',
+        product: cleanUpdated,
+        imageSlots: {
+          slot0: { id: `IMG_${cleanUpdated.ProductID}_SLOT_0`, url: slot1 },
+          slot1: { id: `IMG_${cleanUpdated.ProductID}_SLOT_1`, url: slot2 }
+        }
+      }).then(res => {
         if (res.success) {
           setSyncStatus('synced');
-          addNotification('📊 Google Sheets', `تم تحديث المنتج "${cleanUpdated.name}" في شيت جوجل فورياً!`, 'sync');
-          pullDataFromGoogleSheets(false);
+          addNotification('📊 Google Sheets', `تم تحديث المنتج "${cleanUpdated.name}" في شيت جوجل بنجاح!`, 'sync');
         } else {
           setSyncStatus('error');
-          addNotification('⚠️ خطأ في المزامنة', res.message, 'warning');
+          addNotification('⚠️ تنبيه المزامنة', res.message || 'تم الحفظ محلياً فقط', 'warning');
         }
-      } catch (err: any) {
+      }).catch(() => {
         setSyncStatus('error');
-        addNotification('❌ خطأ في الربط', err.message || 'فشلت المزامنة مع شيت جوجل', 'warning');
-      } finally {
-        setIsGlobalLoading(false);
-      }
+        addNotification('❌ تنبيه المزامنة', 'تعذر الاتصال بـ Google Sheets، تم الحفظ محلياً', 'warning');
+      });
     } else {
       setSyncStatus('synced');
-      setIsGlobalLoading(false);
     }
   };
 
   const handleDeleteProduct = async (id: string) => {
     const targetProd = products.find(p => p.ProductID === id || p.SKU === id);
     const targetSku = targetProd?.SKU || id;
+
+    // ⚡ Instant Local Delete (Optimistic UI - 0ms delay)
+    setProducts(prev => {
+      const filtered = prev.filter(p => p.ProductID !== id && p.SKU !== id);
+      saveLocalProducts(filtered);
+      return filtered;
+    });
+    addAuditLog('مدير النظام', 'حذف منتج', `تم حذف المنتج رقم/SKU: ${targetSku}`);
+
     const hasSheet = Boolean(settings?.googleAppsScriptUrl && settings.googleAppsScriptUrl.trim().startsWith('http'));
-
-    if (hasSheet) {
-      setIsGlobalLoading(true);
-      setGlobalLoadingMessage('جارٍ حذف المنتج والتأكد من البيانات...');
-      const isAlive = await pingGoogleAppsScript(settings.googleAppsScriptUrl);
-      if (!isAlive && !isOnline) {
-        setIsGlobalLoading(false);
-        addNotification('❌ لا يوجد اتصال', 'لا يوجد اتصال بالأكسل. لم يتم حذف الصنف.', 'warning');
-        setSyncStatus('error');
-        return;
-      }
-    }
-
-    setSyncStatus('syncing');
-
-    if (hasSheet) {
-      try {
-        const res = await sendToGoogleAppsScriptWebApp(settings.googleAppsScriptUrl, {
-          action: 'delete_product',
-          productId: id,
-          sku: targetSku
-        });
+    if (hasSheet && isOnline) {
+      setSyncStatus('syncing');
+      
+      // Asynchronous background sync - non-blocking!
+      sendToGoogleAppsScriptWebApp(settings.googleAppsScriptUrl, {
+        action: 'delete_product',
+        productId: id,
+        sku: targetSku
+      }).then(res => {
         if (res.success) {
-          setProducts(prev => {
-            const filtered = prev.filter(p => p.ProductID !== id && p.SKU !== id);
-            saveLocalProducts(filtered);
-            return filtered;
-          });
-          addAuditLog('مدير النظام', 'حذف منتج', `تم حذف المنتج رقم/SKU: ${targetSku}`);
           setSyncStatus('synced');
-          addNotification('🗑️ Google Sheets', 'تم حذف الصف المحدد فقط من ورقة الأكسل!', 'sync');
-          pullDataFromGoogleSheets(false);
+          addNotification('🗑️ Google Sheets', 'تم حذف المنتج من ورقة الأكسل بنجاح!', 'sync');
         } else {
           setSyncStatus('error');
-          addNotification('⚠️ خطأ في الربط', res.message || 'تعذر حذف الصف من ورقة الأكسل', 'warning');
+          addNotification('⚠️ تنبيه المزامنة', res.message || 'تم الحذف محلياً فقط', 'warning');
         }
-      } catch (err: any) {
+      }).catch(() => {
         setSyncStatus('error');
-        addNotification('❌ خطأ في الربط', 'فشلت عملية الحذف، يرجى التثبت من الاتصال بالأكسل', 'warning');
-      } finally {
-        setIsGlobalLoading(false);
-      }
-    } else {
-      setProducts(prev => {
-        const filtered = prev.filter(p => p.ProductID !== id && p.SKU !== id);
-        saveLocalProducts(filtered);
-        return filtered;
+        addNotification('❌ تنبيه المزامنة', 'تعذر الاتصال بـ Google Sheets، تم الحفظ محلياً', 'warning');
       });
+    } else {
       setSyncStatus('synced');
-      setIsGlobalLoading(false);
     }
   };
 
