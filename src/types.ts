@@ -189,6 +189,15 @@ export interface Offer {
   OfferID: string;
   title: string;
   discountPercentage: number;
+  discountAmount?: number;
+  discountType?: 'percentage' | 'fixed';
+  applyToAll?: boolean;
+  targetCategoryIds?: string[];
+  targetGroupIds?: string[];
+  targetProductIds?: string[];
+  branch?: string;
+  priority?: number;
+  priceGroup?: string;
   startDate: string;
   endDate: string;
   status: 'active' | 'expired';

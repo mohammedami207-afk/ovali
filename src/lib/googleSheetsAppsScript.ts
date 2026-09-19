@@ -411,6 +411,11 @@ function doPost(e) {
       return handleUpsertProductRow(payload.product, payload.imageSlots);
     }
 
+    // 12.1. تحديث أسعار وتخفيضات المنتجات جماعياً دفعة واحدة بسرعة فائقة (Bulk Discount Sync)
+    if ((action === 'batch_update_products' || action === 'apply_bulk_discount') && Array.isArray(payload.products)) {
+      return handleBatchUpdateProductPrices(payload.products);
+    }
+
     // 13. حذف صنف وتفريغ صفه فوراً بالـ ID / SKU
     if (action === 'delete_product') {
       const sku = payload.sku || payload.ProductID || payload.productId || (payload.product && payload.product.SKU);
@@ -1371,6 +1376,62 @@ function handleUpsertProductRow(product, imageSlots) {
     sku: finalSku,
     createdAt: fixedCreatedDate,
     updatedAt: now
+  });
+}
+
+/**
+ * ⚡ تحديث أسعار وتخفيضات مجموعة منتجات دفعة واحدة بسرعة فائقة دون مساس بباقي البيانات أو الصور (Bulk Discount Sync)
+ */
+function handleBatchUpdateProductPrices(productsToUpdate) {
+  if (!Array.isArray(productsToUpdate) || productsToUpdate.length === 0) {
+    return createJsonResponse({ success: true, message: "لا توجد منتجات للتحديث" });
+  }
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const prodSheet = ss.getSheetByName("المنتجات");
+  if (!prodSheet || prodSheet.getLastRow() <= 1) {
+    return createJsonResponse({ success: false, message: "ورقة المنتجات غير موجودة أو فارغة" });
+  }
+
+  const lastRow = prodSheet.getLastRow();
+  const ids = prodSheet.getRange(2, 1, lastRow - 1, 1).getValues();
+  const skus = prodSheet.getRange(2, 2, lastRow - 1, 1).getValues();
+  
+  // بناء خريطة للمنتجات المطلوب تحديثها بالـ ProductID و SKU
+  const updateMap = {};
+  for (let p = 0; p < productsToUpdate.length; p++) {
+    const prod = productsToUpdate[p];
+    if (prod.ProductID) updateMap[String(prod.ProductID).trim()] = prod;
+    if (prod.SKU) updateMap[String(prod.SKU).trim()] = prod;
+  }
+
+  const now = getFormattedEnglishDate();
+  let updatedCount = 0;
+
+  // جلب نطاقات أسعار البيع وتاريخ التحديث فقط:
+  // العمود 8 (H): سعر_البيع القديم
+  // العمود 9 (I): سعر_البيع الجديد
+  // العمود 17 (Q): تاريخ_التحديث
+  for (let i = 0; i < ids.length; i++) {
+    const rowId = String(ids[i][0]).trim();
+    const rowSku = String(skus[i][0]).trim();
+    const match = updateMap[rowId] || updateMap[rowSku];
+    if (match) {
+      const rowIndex = i + 2;
+      const origPrice = Number(match.originalPrice !== undefined ? match.originalPrice : match.salePrice) || 0;
+      const salePrice = Number(match.salePrice) || 0;
+      
+      prodSheet.getRange(rowIndex, 8).setValue(origPrice);
+      prodSheet.getRange(rowIndex, 9).setValue(salePrice);
+      prodSheet.getRange(rowIndex, 17).setValue(now);
+      updatedCount++;
+    }
+  }
+
+  return createJsonResponse({ 
+    success: true, 
+    message: "تم تحديث أسعار وتخفيضات " + updatedCount + " منتج في Google Sheets بنجاح!",
+    updatedCount: updatedCount 
   });
 }
 
@@ -2899,8 +2960,17 @@ export async function fetchDataFromGoogleSheets(webAppUrl: string): Promise<{
 
           const createDate = p.createdAt || p['تاريخ_الرفع'] || p['تاريخ_الإنشاء'] || p.updatedAt || p['تاريخ_التحديث'] || '';
           const updateDate = p.updatedAt || p['تاريخ_التحديث'] || createDate;
+          const orig = Number(p.originalPrice || p['سعر_البيع القديم']) || 0;
+          const sale = Number(p.salePrice || p['سعر_البيع الجديد'] || p['سعر_البيع']) || 0;
+          let disc = Number(p.discount) || 0;
+          if (orig > sale && orig > 0) {
+            disc = Math.round(((orig - sale) / orig) * 100);
+          }
           return {
             ...p,
+            originalPrice: orig > 0 ? orig : undefined,
+            salePrice: sale > 0 ? sale : (Number(p.salePrice) || 0),
+            discount: disc,
             createdAt: createDate,
             updatedAt: updateDate,
             images: imgs.slice(0, 2)

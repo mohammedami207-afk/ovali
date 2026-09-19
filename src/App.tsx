@@ -786,8 +786,8 @@ export function App() {
     });
   };
 
-  // Offers Management Handlers with Google Sheets sync
-  const handleAddOffer = async (newOff: Offer) => {
+  // Offers Management Handlers with Google Sheets sync and Bulk Discount support
+  const handleAddOffer = async (newOff: Offer, updatedProducts?: Product[]) => {
     let updatedList: Offer[] = [];
     setOffers(prev => {
       const filtered = prev.filter(o => o.OfferID !== newOff.OfferID);
@@ -795,52 +795,88 @@ export function App() {
       saveLocalOffers(updatedList);
       return updatedList;
     });
-    logAudit('المدير المسؤول', 'إضافة عرض ترويجي', `تم إنشاء عرض: ${newOff.title} (خصم ${newOff.discountPercentage}%)`);
-    addNotification('🔥 تم تفعيل العرض', `العرض "${newOff.title}" أصبح فعالاً الآن وجاري المزامنة...`, 'info');
 
-    await executeUnifiedSheetsOperation({
+    if (updatedProducts && updatedProducts.length > 0) {
+      setProducts(updatedProducts);
+      saveLocalProducts(updatedProducts);
+    }
+
+    logAudit('المدير المسؤول', 'إضافة وتطبيق عرض خصم', `تم إنشاء عرض: ${newOff.title} (${newOff.discountType === 'fixed' ? `خصم ${newOff.discountAmount} ر.س` : `خصم ${newOff.discountPercentage}%`})`);
+    addNotification('🔥 تم تطبيق الخصم', `تم تفعيل "${newOff.title}" بنجاح على المنتجات وجاري الحفظ في Google Sheets...`, 'sync');
+
+    // 1. Sync the offer to Google Sheets
+    executeUnifiedSheetsOperation({
       action: 'save_offer',
       payload: { 
         OfferID: newOff.OfferID,
         offer: newOff,
         offers: updatedList 
       },
-      entityName: `العرض "${newOff.title}"`,
+      entityName: `الخصم "${newOff.title}"`,
       operationType: 'حفظ',
       webAppUrl: settings.googleAppsScriptUrl,
       setLoadingState: (loading) => setSyncStatus(loading ? 'syncing' : 'synced'),
-      showToast: addNotification,
-      onSuccess: () => pullDataFromGoogleSheets(false)
+      showToast: addNotification
     });
+
+    // 2. Sync the updated product prices to Google Sheets in the background
+    if (updatedProducts && updatedProducts.length > 0) {
+      executeUnifiedSheetsOperation({
+        action: 'batch_update_products',
+        payload: { 
+          products: updatedProducts 
+        },
+        entityName: `تخفيضات أسعار المنتجات`,
+        operationType: 'تحديث جماعي',
+        webAppUrl: settings.googleAppsScriptUrl,
+        showToast: addNotification
+      });
+    }
   };
 
-  const handleUpdateOffer = async (updatedOff: Offer) => {
+  const handleUpdateOffer = async (updatedOff: Offer, updatedProducts?: Product[]) => {
     let updatedList: Offer[] = [];
     setOffers(prev => {
       updatedList = prev.map(o => o.OfferID === updatedOff.OfferID ? updatedOff : o);
       saveLocalOffers(updatedList);
       return updatedList;
     });
-    logAudit('المدير المسؤول', 'تعديل عرض', `تم تعديل بيانات العرض: ${updatedOff.title}`);
-    addNotification('✏️ تم تحديث العرض', `تم حفظ تغييرات العرض "${updatedOff.title}"`, 'info');
 
-    await executeUnifiedSheetsOperation({
+    if (updatedProducts && updatedProducts.length > 0) {
+      setProducts(updatedProducts);
+      saveLocalProducts(updatedProducts);
+    }
+
+    logAudit('المدير المسؤول', 'تعديل عرض', `تم تعديل بيانات العرض: ${updatedOff.title}`);
+    addNotification('✏️ تم تحديث الخصم', `تم حفظ تغييرات "${updatedOff.title}" وتطبيقها فورياً.`, 'info');
+
+    executeUnifiedSheetsOperation({
       action: 'save_offer',
       payload: { 
         OfferID: updatedOff.OfferID,
         offer: updatedOff,
         offers: updatedList 
       },
-      entityName: `العرض "${updatedOff.title}"`,
+      entityName: `الخصم "${updatedOff.title}"`,
       operationType: 'تحديث',
       webAppUrl: settings.googleAppsScriptUrl,
       setLoadingState: (loading) => setSyncStatus(loading ? 'syncing' : 'synced'),
-      showToast: addNotification,
-      onSuccess: () => pullDataFromGoogleSheets(false)
+      showToast: addNotification
     });
+
+    if (updatedProducts && updatedProducts.length > 0) {
+      executeUnifiedSheetsOperation({
+        action: 'batch_update_products',
+        payload: { products: updatedProducts },
+        entityName: `أسعار المنتجات المحدثة`,
+        operationType: 'تحديث جماعي',
+        webAppUrl: settings.googleAppsScriptUrl,
+        showToast: addNotification
+      });
+    }
   };
 
-  const handleDeleteOffer = async (id: string) => {
+  const handleDeleteOffer = async (id: string, restoredProducts?: Product[]) => {
     const off = offers.find(o => o.OfferID === id);
     let updatedList: Offer[] = [];
     setOffers(prev => {
@@ -848,25 +884,83 @@ export function App() {
       saveLocalOffers(updatedList);
       return updatedList;
     });
+
+    if (restoredProducts && restoredProducts.length > 0) {
+      setProducts(restoredProducts);
+      saveLocalProducts(restoredProducts);
+    }
+
     if (off) {
       logAudit('المدير المسؤول', 'حذف عرض', `تم حذف العرض: ${off.title}`);
       addNotification('🗑️ تم إلغاء العرض', `تم إزالة العرض ${off.title}`, 'info');
     }
 
-    await executeUnifiedSheetsOperation({
+    executeUnifiedSheetsOperation({
       action: 'delete_offer',
       payload: { 
         OfferID: id,
         id: id,
         offers: updatedList 
       },
-      entityName: `العرض "${off?.title || id}"`,
+      entityName: `الخصم "${off?.title || id}"`,
       operationType: 'حذف',
       webAppUrl: settings.googleAppsScriptUrl,
       setLoadingState: (loading) => setSyncStatus(loading ? 'syncing' : 'synced'),
-      showToast: addNotification,
-      onSuccess: () => pullDataFromGoogleSheets(false)
+      showToast: addNotification
     });
+
+    if (restoredProducts && restoredProducts.length > 0) {
+      executeUnifiedSheetsOperation({
+        action: 'batch_update_products',
+        payload: { products: restoredProducts },
+        entityName: `استعادة الأسعار الأصلية`,
+        operationType: 'تحديث جماعي',
+        webAppUrl: settings.googleAppsScriptUrl,
+        showToast: addNotification
+      });
+    }
+  };
+
+  const handleRevertOffer = async (offer: Offer, restoredProducts?: Product[]) => {
+    let updatedList: Offer[] = [];
+    setOffers(prev => {
+      updatedList = prev.map(o => o.OfferID === offer.OfferID ? { ...o, status: 'expired' as const } : o);
+      saveLocalOffers(updatedList);
+      return updatedList;
+    });
+
+    if (restoredProducts && restoredProducts.length > 0) {
+      setProducts(restoredProducts);
+      saveLocalProducts(restoredProducts);
+    }
+
+    logAudit('المدير المسؤول', 'تصفير واستعادة أسعار العرض', `تم تصفير الخصم واستعادة الأسعار الأصلية للعرض: ${offer.title}`);
+    addNotification('🔄 استعادة الأسعار الأصلية', `تم تصفير الخصم واستعادة الأسعار الأصلية للمنتجات بنجاح.`, 'sync');
+
+    executeUnifiedSheetsOperation({
+      action: 'save_offer',
+      payload: { 
+        OfferID: offer.OfferID,
+        offer: { ...offer, status: 'expired' },
+        offers: updatedList 
+      },
+      entityName: `تصفير الخصم "${offer.title}"`,
+      operationType: 'تحديث',
+      webAppUrl: settings.googleAppsScriptUrl,
+      setLoadingState: (loading) => setSyncStatus(loading ? 'syncing' : 'synced'),
+      showToast: addNotification
+    });
+
+    if (restoredProducts && restoredProducts.length > 0) {
+      executeUnifiedSheetsOperation({
+        action: 'batch_update_products',
+        payload: { products: restoredProducts },
+        entityName: `استعادة أسعار المنتجات`,
+        operationType: 'تحديث جماعي',
+        webAppUrl: settings.googleAppsScriptUrl,
+        showToast: addNotification
+      });
+    }
   };
 
   // Store Settings Handler with instant Google Sheets sync
@@ -1667,15 +1761,17 @@ function hexToRgbString(hex: string, fallback: string = '236, 72, 153'): string 
 
   // Auto-sync & live poller on app load / browser refresh: Wait for initial fetch to finish before removing loader
   useEffect(() => {
-    // Safety fallback timer (10s) in case network is disconnected or server takes too long
+    // Fast-release timer: If local cache exists, dismiss the blocking loader in 500ms so user can browse instantly
+    const localProds = getLocalProducts();
+    const fallbackLimit = (localProds && localProds.length > 0) ? 500 : 2500;
+
     const safetyFallbackTimer = setTimeout(() => {
       if (isFirstLoad.current) {
-        console.warn('Sync timeout reached, displaying store with local cache.');
         setIsGlobalLoading(false);
         isFirstLoad.current = false;
         setShowOfferAnnouncement(true);
       }
-    }, 10000);
+    }, fallbackLimit);
 
     if (settings?.googleAppsScriptUrl && settings.googleAppsScriptUrl.trim().startsWith('http')) {
       pullDataFromGoogleSheets(false);
@@ -2445,7 +2541,13 @@ ${newInvoice.itemsSummary}
       
       {/* Global Blocking Loader */}
       {isGlobalLoading && (
-        <BlockingLoader message={globalLoadingMessage} />
+        <BlockingLoader 
+          message={globalLoadingMessage} 
+          onDismiss={() => {
+            setIsGlobalLoading(false);
+            isFirstLoad.current = false;
+          }} 
+        />
       )}
 
       {/* Welcome & Special Offers Announcement */}
@@ -2827,9 +2929,12 @@ ${newInvoice.itemsSummary}
                     {adminTab === 'offers' && (
                       <OffersTab
                         offers={offers}
+                        products={products}
+                        categories={categories}
                         onAddOffer={handleAddOffer}
                         onUpdateOffer={handleUpdateOffer}
                         onDeleteOffer={handleDeleteOffer}
+                        onRevertDiscount={handleRevertOffer}
                       />
                     )}
 

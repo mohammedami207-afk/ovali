@@ -3,10 +3,12 @@ import { RefreshCw, Sparkles } from 'lucide-react';
 
 interface BlockingLoaderProps {
   message?: string;
+  onDismiss?: () => void;
 }
 
 export const BlockingLoader: React.FC<BlockingLoaderProps> = ({ 
-  message = 'تحميل العروضات الجديده...' 
+  message = 'تحميل العروضات الجديده...',
+  onDismiss
 }) => {
   return (
     <>
@@ -17,10 +19,14 @@ export const BlockingLoader: React.FC<BlockingLoaderProps> = ({
 
       {/* Light Transparent Backdrop + Compact Floating Frosted Glass Card */}
       <div 
-        className="fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-slate-950/25 backdrop-blur-[3px] text-white overflow-hidden p-4 transition-all duration-300 pointer-events-auto" 
+        className="fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-slate-950/20 backdrop-blur-[2px] text-white overflow-hidden p-4 transition-all duration-300 pointer-events-auto" 
         dir="rtl"
+        onClick={() => onDismiss?.()}
       >
-        <div className="relative flex items-center gap-3.5 bg-slate-900/90 backdrop-blur-xl border border-white/10 px-5 py-3.5 rounded-2xl shadow-2xl shadow-black/40 max-w-sm animate-in fade-in zoom-in-95 duration-200">
+        <div 
+          onClick={(e) => e.stopPropagation()}
+          className="relative flex items-center justify-between gap-3.5 bg-slate-900/95 backdrop-blur-xl border border-white/10 px-5 py-3.5 rounded-2xl shadow-2xl shadow-black/40 max-w-sm animate-in fade-in zoom-in-95 duration-200"
+        >
           {/* Subtle Spinner Icon */}
           <div className="relative flex items-center justify-center shrink-0">
             <div className="w-9 h-9 rounded-xl bg-theme-primary/15 border border-theme-primary/30 flex items-center justify-center text-theme-primary shadow-inner">
@@ -32,7 +38,7 @@ export const BlockingLoader: React.FC<BlockingLoaderProps> = ({
           </div>
 
           {/* Text Info */}
-          <div className="flex flex-col text-right">
+          <div className="flex flex-col text-right flex-1">
             <span className="text-xs font-bold text-white font-cairo leading-snug flex items-center gap-1.5">
               {message}
             </span>
@@ -40,6 +46,17 @@ export const BlockingLoader: React.FC<BlockingLoaderProps> = ({
               مزامنة فورية لتسوق أفضل وأسرع
             </span>
           </div>
+
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors text-xs font-mono"
+              title="تخطي والبدء فوراً"
+            >
+              ✕
+            </button>
+          )}
         </div>
       </div>
     </>

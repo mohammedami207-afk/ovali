@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { ShoppingCart, Eye, Percent, Share2, Clock, Sparkles, Heart, Star } from 'lucide-react';
+import { ShoppingCart, Eye, Percent, Share2, Clock, Sparkles, Heart, Star, Flame } from 'lucide-react';
 import { Product, CurrencyRate } from '../../types';
 import { formatRelativeTime } from '../../lib/dateUtils';
 import { DEFAULT_PRODUCT_IMAGE } from '../../lib/imageUtils';
@@ -91,13 +91,13 @@ export const ProductCard: React.FC<ProductCardProps> = memo(({
     >
       {/* Top Floating Discount & Savings Badge */}
       {discountPercentage > 0 && (
-        <div className="absolute top-1.5 right-1.5 z-10 flex flex-col gap-0.5 items-end pointer-events-none">
-          <div className="bg-gradient-to-r from-rose-600 to-pink-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-xs flex items-center gap-0.5 border border-white/20">
-            <Percent className="w-2.5 h-2.5 shrink-0" />
-            <span>خصم {discountPercentage}%</span>
+        <div className="absolute top-2 right-2 z-10 flex flex-col gap-1 items-end pointer-events-none">
+          <div className="bg-rose-600 hover:bg-rose-700 text-white text-[10px] sm:text-[11px] font-black px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1 border border-white/30">
+            <span className="font-mono font-bold tracking-tight">-{discountPercentage}%</span>
+            <Flame className="w-3.5 h-3.5 text-amber-300 fill-amber-300 animate-pulse" />
           </div>
           {convertedSavedAmount && Number(convertedSavedAmount) > 0 && (
-            <span className="bg-slate-950/85 backdrop-blur-xs text-emerald-400 text-[8.5px] font-bold px-1.5 py-0.2 rounded border border-emerald-500/30">
+            <span className="bg-slate-950/90 backdrop-blur-xs text-emerald-400 text-[8.5px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded border border-emerald-500/30 shadow-xs">
               وفّر {convertedSavedAmount} {currency.symbol}
             </span>
           )}

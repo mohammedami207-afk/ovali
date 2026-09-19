@@ -1,10 +1,11 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { Customer, Supplier, Employee, Offer, Coupon, AuditLog, AppSettings, Order } from '../../types';
+import { Customer, Supplier, Employee, Offer, Coupon, AuditLog, AppSettings, Order, Product, Category, CategoryGroup } from '../../types';
 import { 
   Plus, Tag, Trash2, Edit, Search, UserCheck, Truck, Flame, ShieldAlert, 
   Check, X, Calendar, Filter, RotateCcw, AlertTriangle, Sparkles, CheckCircle2,
   Users, Receipt, History, Copy, Eye, Clock, RefreshCw, Download, Upload, FileSpreadsheet,
-  BarChart2, TrendingUp, Award, Zap, Shield
+  BarChart2, TrendingUp, Award, Zap, Shield, Percent, Layers, ShoppingBag, Info,
+  CheckSquare, Square, ChevronDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
@@ -1264,28 +1265,117 @@ export const EmployeesTab: React.FC<{
 
 
 // =========================================================================
-// 4. Offers Tab (العروض والتخفيضات)
+// 4. Offers Tab (العروض والتخفيضات وإدارة الخصومات الجماعية)
 // =========================================================================
 export const OffersTab: React.FC<{ 
   offers: Offer[];
-  onAddOffer?: (off: Offer) => void;
-  onUpdateOffer?: (off: Offer) => void;
-  onDeleteOffer?: (id: string) => void;
-}> = ({ offers, onAddOffer, onUpdateOffer, onDeleteOffer }) => {
+  products?: Product[];
+  categories?: Category[];
+  groups?: CategoryGroup[];
+  onAddOffer?: (off: Offer, updatedProducts?: Product[]) => void | Promise<void>;
+  onUpdateOffer?: (off: Offer, updatedProducts?: Product[]) => void | Promise<void>;
+  onDeleteOffer?: (id: string, restoredProducts?: Product[]) => void | Promise<void>;
+  onRevertDiscount?: (offer: Offer, restoredProducts?: Product[]) => void | Promise<void>;
+}> = ({ 
+  offers, 
+  products = [], 
+  categories = [], 
+  groups = [], 
+  onAddOffer, 
+  onUpdateOffer, 
+  onDeleteOffer, 
+  onRevertDiscount 
+}) => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'expired'>('all');
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingOffer, setEditingOffer] = useState<Offer | null>(null);
 
+  // Form Fields matching user design (Image 2)
   const [offerId, setOfferId] = useState('');
   const [title, setTitle] = useState('');
-  const [discountPercentage, setDiscountPercentage] = useState<number | string>(20);
+  const [applyToAll, setApplyToAll] = useState(false);
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [selectedCategoryNames, setSelectedCategoryNames] = useState<string[]>([]);
+  const [selectedGroupNames, setSelectedGroupNames] = useState<string[]>([]);
+  const [branch, setBranch] = useState('الكل (كافة الفروع)');
+  const [priority, setPriority] = useState<number>(1);
+  const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('percentage');
+  const [discountValue, setDiscountValue] = useState<number | string>(20);
   const [startDate, setStartDate] = useState('2026-08-01');
   const [endDate, setEndDate] = useState('2026-08-31');
-  const [status, setStatus] = useState<'active' | 'expired'>('active');
+  const [priceGroup, setPriceGroup] = useState('الكل');
+  const [isActive, setIsActive] = useState(true);
+  const [appliesToAllCheckbox, setAppliesToAllCheckbox] = useState(false);
+
+  // Search & Filtering inside products multi-select
+  const [productSearchTerm, setProductSearchTerm] = useState('');
 
   // Interactive Date Picker state
   const [activeDatePicker, setActiveDatePicker] = useState<'start' | 'end' | null>(null);
+
+  // Unique Categories & Groups derived from store data
+  const availableCategories = useMemo(() => {
+    const catSet = new Set<string>();
+    categories.forEach(c => {
+      if (c.name && c.name.trim()) catSet.add(c.name.trim());
+    });
+    products.forEach(p => {
+      if (p.category && p.category.trim()) catSet.add(p.category.trim());
+    });
+    return Array.from(catSet);
+  }, [categories, products]);
+
+  const availableGroups = useMemo(() => {
+    const grpSet = new Set<string>();
+    groups.forEach(g => {
+      if (g.name && g.name.trim()) grpSet.add(g.name.trim());
+    });
+    categories.forEach(c => {
+      if (c.group && c.group.trim()) grpSet.add(c.group.trim());
+    });
+    products.forEach(p => {
+      if (p.group && p.group.trim()) grpSet.add(p.group.trim());
+    });
+    if (grpSet.size === 0) grpSet.add('عام');
+    return Array.from(grpSet);
+  }, [groups, categories, products]);
+
+  // Compute targeted products based on current selection in the modal
+  const targetedProducts = useMemo(() => {
+    if (applyToAll || appliesToAllCheckbox) {
+      return products;
+    }
+
+    const hasSpecificProducts = selectedProductIds.length > 0;
+    const hasCategoryFilter = selectedCategoryNames.length > 0;
+    const hasGroupFilter = selectedGroupNames.length > 0;
+
+    if (!hasSpecificProducts && !hasCategoryFilter && !hasGroupFilter) {
+      return products; // Default fallback to all products
+    }
+
+    return products.filter(p => {
+      if (hasSpecificProducts && (selectedProductIds.includes(p.ProductID) || selectedProductIds.includes(p.SKU))) {
+        return true;
+      }
+      const matchCat = hasCategoryFilter ? selectedCategoryNames.includes(p.category) : false;
+      const matchGrp = hasGroupFilter ? (p.group && selectedGroupNames.includes(p.group)) : false;
+      return matchCat || matchGrp;
+    });
+  }, [products, applyToAll, appliesToAllCheckbox, selectedProductIds, selectedCategoryNames, selectedGroupNames]);
+
+  // Sample calculation for preview
+  const sampleProduct = targetedProducts[0] || products[0];
+  const sampleBasePrice = sampleProduct ? (sampleProduct.originalPrice || sampleProduct.salePrice || 10) : 10;
+  const numVal = Math.max(0, Number(discountValue) || 0);
+  const sampleNewPrice = discountType === 'percentage'
+    ? Number((sampleBasePrice * (1 - Math.min(100, numVal) / 100)).toFixed(2))
+    : Math.max(0, Number((sampleBasePrice - numVal).toFixed(2)));
+  const samplePercent = sampleBasePrice > 0 
+    ? Math.round(((sampleBasePrice - sampleNewPrice) / sampleBasePrice) * 100) 
+    : 0;
+  const sampleSavings = Number((sampleBasePrice - sampleNewPrice).toFixed(2));
 
   const openAddModal = () => {
     const today = new Date().toISOString().split('T')[0];
@@ -1294,10 +1384,20 @@ export const OffersTab: React.FC<{
     const nextNum = (offers.length + 1).toString().padStart(2, '0');
     setOfferId(`OFF_${nextNum}`);
     setTitle('');
-    setDiscountPercentage(20);
+    setApplyToAll(false);
+    setSelectedProductIds([]);
+    setSelectedCategoryNames([]);
+    setSelectedGroupNames([]);
+    setBranch('الكل (كافة الفروع)');
+    setPriority(1);
+    setDiscountType('percentage');
+    setDiscountValue(20);
     setStartDate(today);
     setEndDate(nextMonth);
-    setStatus('active');
+    setPriceGroup('الكل');
+    setIsActive(true);
+    setAppliesToAllCheckbox(false);
+    setProductSearchTerm('');
     setShowFormModal(true);
   };
 
@@ -1305,45 +1405,120 @@ export const OffersTab: React.FC<{
     setEditingOffer(off);
     setOfferId(off.OfferID);
     setTitle(off.title);
-    setDiscountPercentage(off.discountPercentage);
+    setApplyToAll(Boolean(off.applyToAll));
+    setSelectedProductIds(off.targetProductIds || []);
+    setSelectedCategoryNames(off.targetCategoryIds || []);
+    setSelectedGroupNames(off.targetGroupIds || []);
+    setBranch(off.branch || 'الكل (كافة الفروع)');
+    setPriority(off.priority || 1);
+    setDiscountType(off.discountType || 'percentage');
+    setDiscountValue(off.discountType === 'fixed' ? (off.discountAmount ?? off.discountPercentage) : off.discountPercentage);
     setStartDate(formatCleanDate(off.startDate) || '2026-08-01');
     setEndDate(formatCleanDate(off.endDate) || '2026-08-31');
-    setStatus(off.status);
+    setPriceGroup(off.priceGroup || 'الكل');
+    setIsActive(off.status !== 'expired');
+    setAppliesToAllCheckbox(Boolean(off.applyToAll));
+    setProductSearchTerm('');
     setShowFormModal(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleApplyDiscount = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
     const cleanStart = formatCleanDate(startDate) || startDate;
     const cleanEnd = formatCleanDate(endDate) || endDate;
     const finalId = (offerId.trim() || `OFF_${Date.now().toString().slice(-4)}`).toUpperCase();
+    const valNum = Math.max(0, Number(discountValue) || 0);
 
-    if (editingOffer) {
-      const updated: Offer = {
-        ...editingOffer,
-        OfferID: finalId,
-        title: title.trim(),
-        discountPercentage: Number(discountPercentage) || 0,
-        startDate: cleanStart,
-        endDate: cleanEnd,
-        status
+    // Calculate updated products with discounted prices
+    const targetedIdSet = new Set(targetedProducts.map(p => p.ProductID));
+    const updatedProducts: Product[] = products.map(p => {
+      if (!targetedIdSet.has(p.ProductID)) return p;
+
+      // Keep original baseline price
+      const baseOriginal = (p.originalPrice && p.originalPrice > p.salePrice) ? p.originalPrice : p.salePrice;
+      let newSale = baseOriginal;
+      let calculatedPercent = 0;
+
+      if (discountType === 'percentage') {
+        calculatedPercent = Math.min(100, valNum);
+        newSale = Number((baseOriginal * (1 - calculatedPercent / 100)).toFixed(2));
+      } else {
+        newSale = Math.max(0, Number((baseOriginal - valNum).toFixed(2)));
+        calculatedPercent = baseOriginal > 0 ? Math.round(((baseOriginal - newSale) / baseOriginal) * 100) : 0;
+      }
+
+      return {
+        ...p,
+        originalPrice: baseOriginal,
+        salePrice: newSale,
+        discount: calculatedPercent,
+        updatedAt: new Date().toISOString()
       };
-      if (onUpdateOffer) onUpdateOffer(updated);
-    } else {
-      const newOff: Offer = {
-        OfferID: finalId,
-        title: title.trim(),
-        discountPercentage: Number(discountPercentage) || 0,
-        startDate: cleanStart,
-        endDate: cleanEnd,
-        status
-      };
-      if (onAddOffer) onAddOffer(newOff);
+    });
+
+    const finalOffer: Offer = {
+      OfferID: finalId,
+      title: title.trim(),
+      discountPercentage: discountType === 'percentage' ? valNum : samplePercent,
+      discountAmount: discountType === 'fixed' ? valNum : undefined,
+      discountType,
+      applyToAll: applyToAll || appliesToAllCheckbox,
+      targetProductIds: selectedProductIds,
+      targetCategoryIds: selectedCategoryNames,
+      targetGroupIds: selectedGroupNames,
+      branch,
+      priority: Number(priority) || 1,
+      priceGroup,
+      startDate: cleanStart,
+      endDate: cleanEnd,
+      status: isActive ? 'active' : 'expired'
+    };
+
+    if (editingOffer && onUpdateOffer) {
+      onUpdateOffer(finalOffer, updatedProducts);
+    } else if (onAddOffer) {
+      onAddOffer(finalOffer, updatedProducts);
     }
 
     setShowFormModal(false);
+  };
+
+  // Revert discount from products affected by this offer
+  const handleRevertOffer = (off: Offer) => {
+    if (!window.confirm(`هل أنت متأكد من تصفير وإلغاء الخصم "${off.title}" واستعادة الأسعار الأصلية للمنتجات؟`)) {
+      return;
+    }
+
+    // Determine targeted products of this offer
+    const targetProds = off.applyToAll
+      ? products
+      : products.filter(p => {
+          if (off.targetProductIds && (off.targetProductIds.includes(p.ProductID) || off.targetProductIds.includes(p.SKU))) return true;
+          if (off.targetCategoryIds && off.targetCategoryIds.includes(p.category)) return true;
+          if (off.targetGroupIds && p.group && off.targetGroupIds.includes(p.group)) return true;
+          return false;
+        });
+
+    const targetIdSet = new Set(targetProds.map(p => p.ProductID));
+    const restoredProducts: Product[] = products.map(p => {
+      if (!targetIdSet.has(p.ProductID)) return p;
+      const restoredPrice = (p.originalPrice && p.originalPrice > 0) ? p.originalPrice : p.salePrice;
+      return {
+        ...p,
+        salePrice: restoredPrice,
+        originalPrice: undefined,
+        discount: 0,
+        updatedAt: new Date().toISOString()
+      };
+    });
+
+    if (onRevertDiscount) {
+      onRevertDiscount(off, restoredProducts);
+    } else if (onDeleteOffer) {
+      onDeleteOffer(off.OfferID, restoredProducts);
+    }
   };
 
   const filtered = offers.filter(off => {
@@ -1359,28 +1534,32 @@ export const OffersTab: React.FC<{
 
   return (
     <div className="space-y-4 text-slate-100">
-      {/* Header with Title & Summary Counters */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-4 rounded-3xl">
+      {/* Header with Title & Quick Action */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-4 rounded-3xl shadow-xl">
         <div>
           <div className="flex items-center gap-2">
-            <Flame className="w-5 h-5 text-pink-400" />
-            <h2 className="text-base font-bold text-white">العروض والتخفيضات (Flash Sales)</h2>
+            <div className="w-8 h-8 rounded-xl bg-rose-600/20 border border-rose-500/30 flex items-center justify-center text-rose-400">
+              <Flame className="w-4 h-4 text-rose-400 animate-pulse" />
+            </div>
+            <h2 className="text-base font-black text-white font-cairo">العروض والخصومات وإدارة التخفيضات</h2>
           </div>
-          <p className="text-xs text-slate-400 mt-0.5">إدارة الحملات الترويجية مع منتقي تواريخ تقويمي متطور وتنسيق موثوق لـ Google Sheets</p>
+          <p className="text-xs text-slate-400 mt-1 font-sans">
+            تطبيق خصومات مباشرة (ثابتة أو بالنسبة %) على منتجات محددة، فئات، مجموعات أو كافة أصناف المتجر مع الحفظ الفوري بـ Google Sheets
+          </p>
         </div>
 
         {/* Counters & Add Button */}
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="px-3 py-1.5 bg-pink-500/15 border border-pink-500/30 rounded-2xl text-xs flex items-center gap-1.5">
-            <span className="text-slate-400">إجمالي العروض:</span>
-            <span className="font-extrabold text-pink-300 font-mono">{offers.length}</span>
+          <div className="px-3 py-1.5 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-xs flex items-center gap-1.5 font-sans">
+            <span className="text-slate-400">إجمالي الخصومات:</span>
+            <span className="font-extrabold text-rose-400 font-mono">{offers.length}</span>
           </div>
           <button
             onClick={openAddModal}
-            className="px-4 py-2 bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white font-bold rounded-2xl text-xs flex items-center gap-1.5 shadow-lg shadow-pink-600/20 shrink-0 cursor-pointer transition-all"
+            className="px-4 py-2 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-bold rounded-2xl text-xs flex items-center gap-1.5 shadow-lg shadow-rose-600/25 shrink-0 cursor-pointer transition-all"
           >
             <Plus className="w-4 h-4" />
-            <span>إضافة عرض جديد</span>
+            <span>إضافة خصم جديد</span>
           </button>
         </div>
       </div>
@@ -1390,10 +1569,10 @@ export const OffersTab: React.FC<{
         <div className="relative flex-1 w-full">
           <input
             type="text"
-            placeholder="بحث بالمعرف (ID)، اسم العرض، أو تاريخ البداية/النهاية..."
+            placeholder="بحث بالمعرف (ID)، اسم الخصم، أو التاريخ..."
             value={search || ""}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-pink-500 pr-9 transition-colors font-sans"
+            className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 pr-9 transition-colors font-sans"
           />
           <Search className="w-4 h-4 text-slate-400 absolute right-3 top-3" />
         </div>
@@ -1402,120 +1581,440 @@ export const OffersTab: React.FC<{
           <select
             value={statusFilter || ""}
             onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-3 py-2.5 text-xs text-slate-300 focus:outline-none focus:border-pink-500 font-sans"
+            className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-3 py-2.5 text-xs text-slate-300 focus:outline-none focus:border-rose-500 font-sans cursor-pointer"
           >
-            <option value="all">كل العروض ({offers.length})</option>
-            <option value="active">🟢 العروض النشطة</option>
-            <option value="expired">⚪ العروض المنتهية</option>
+            <option value="all">كل الخصومات ({offers.length})</option>
+            <option value="active">🟢 الخصومات الفعالة</option>
+            <option value="expired">⚪ الخصومات المنتهية</option>
           </select>
         </div>
       </div>
 
-      {/* Add / Edit Offer Form Modal */}
-      {showFormModal && (
-        <form onSubmit={handleSubmit} className="p-5 bg-slate-900 border border-pink-500/40 rounded-3xl space-y-4 shadow-2xl animate-in fade-in">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <h3 className="text-xs font-bold text-pink-400 uppercase tracking-wider flex items-center gap-1.5">
-              <Flame className="w-4 h-4" />
-              <span>{editingOffer ? 'تعديل بيانات العرض الترويجي' : 'إنشاء عرض تخفيض جديد'}</span>
-            </h3>
-            <button 
-              type="button" 
-              onClick={() => setShowFormModal(false)}
-              className="text-slate-400 hover:text-white p-1"
+      {/* Add / Edit Discount Modal - Matching User Reference (Image 2) */}
+      <AnimatePresence>
+        {showFormModal && (
+          <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-3 overflow-y-auto" dir="rtl">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col"
             >
-              <X className="w-4 h-4" />
-            </button>
+              {/* Modal Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/90">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-rose-600/20 border border-rose-500/30 flex items-center justify-center text-rose-400">
+                    <Flame className="w-4 h-4" />
+                  </div>
+                  <h3 className="text-sm font-black text-white font-cairo">
+                    {editingOffer ? 'تعديل خصم' : 'إضافة خصم'}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowFormModal(false)}
+                  className="p-1.5 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Body (Scrollable Form) */}
+              <form onSubmit={handleApplyDiscount} className="p-6 space-y-4 overflow-y-auto text-xs flex-1">
+                {/* 1. Name Field */}
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1.5 font-cairo">
+                    الإسم:*
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="مثال: خصم عطلة نهاية الأسبوع"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 font-sans"
+                  />
+                </div>
+
+                {/* 2. Apply to all products checkbox card (Matching Image 2) */}
+                <div className="p-3.5 bg-blue-950/30 border border-blue-500/30 rounded-2xl flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    id="applyToAllCheck"
+                    checked={applyToAll}
+                    onChange={(e) => setApplyToAll(e.target.checked)}
+                    className="w-4 h-4 rounded mt-0.5 accent-rose-500 cursor-pointer"
+                  />
+                  <label htmlFor="applyToAllCheck" className="cursor-pointer select-none flex-1">
+                    <div className="text-xs font-black text-blue-300 font-cairo">
+                      تطبيق الخصم على جميع المنتجات بدون استثناء
+                    </div>
+                    <div className="text-[11px] text-slate-300/80 mt-0.5 leading-relaxed font-sans">
+                      عند التفعيل، سيتم تطبيق هذا الخصم على كافة أصناف وخدمات المتجر تلقائياً دون الحاجة لتحديدها يدوياً.
+                    </div>
+                  </label>
+                </div>
+
+                {/* 3. Specific Products Selector (if not applyToAll) */}
+                {!applyToAll && (
+                  <div className="space-y-2 p-3 bg-slate-950/60 rounded-2xl border border-slate-800/80">
+                    <div className="flex items-center justify-between flex-wrap gap-1">
+                      <label className="font-bold text-slate-300 font-cairo flex items-center gap-1.5">
+                        <ShoppingBag className="w-3.5 h-3.5 text-rose-400" />
+                        <span>المنتجات المستهدفة:</span>
+                        <span className="text-[10px] text-rose-400 font-mono font-normal">
+                          ({selectedProductIds.length} محددة من {products.length})
+                        </span>
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedProductIds(products.map(p => p.ProductID))}
+                          className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] rounded-lg font-sans cursor-pointer transition-colors"
+                        >
+                          اختر الكل
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedProductIds([])}
+                          className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-400 text-[10px] rounded-lg font-sans cursor-pointer transition-colors"
+                        >
+                          إلغاء تحديد الكل
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Filter search within products */}
+                    <input
+                      type="text"
+                      placeholder="ابحث بالاسم أو الباركود لتحديد أصناف بعينها..."
+                      value={productSearchTerm}
+                      onChange={(e) => setProductSearchTerm(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-[11px] text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
+                    />
+
+                    {/* Products Multi-select pills */}
+                    <div className="max-h-32 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-1.5 p-1 bg-slate-900/70 rounded-xl border border-slate-800">
+                      {products
+                        .filter(p => !productSearchTerm || p.name.toLowerCase().includes(productSearchTerm.toLowerCase()) || p.SKU.includes(productSearchTerm))
+                        .slice(0, 50)
+                        .map(p => {
+                          const isSelected = selectedProductIds.includes(p.ProductID);
+                          return (
+                            <button
+                              key={p.ProductID}
+                              type="button"
+                              onClick={() => {
+                                if (isSelected) {
+                                  setSelectedProductIds(prev => prev.filter(id => id !== p.ProductID));
+                                } else {
+                                  setSelectedProductIds(prev => [...prev, p.ProductID]);
+                                }
+                              }}
+                              className={`flex items-center justify-between gap-2 p-2 rounded-lg border text-right transition-all cursor-pointer ${isSelected ? 'bg-rose-600/20 border-rose-500/50 text-white' : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:border-slate-700'}`}
+                            >
+                              <div className="flex items-center gap-1.5 truncate">
+                                {isSelected ? <CheckSquare className="w-3.5 h-3.5 text-rose-400 shrink-0" /> : <Square className="w-3.5 h-3.5 text-slate-600 shrink-0" />}
+                                <span className="text-[11px] font-bold truncate">{p.name}</span>
+                              </div>
+                              <span className="text-[10px] font-mono text-emerald-400 shrink-0">{p.salePrice} ر.س</span>
+                            </button>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. Categories & Groups Selectors (Matching Image 2) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Category Filter */}
+                  <div className="space-y-1.5 p-3 bg-slate-950/60 rounded-2xl border border-slate-800/80">
+                    <div className="flex items-center justify-between">
+                      <label className="font-bold text-slate-300 font-cairo">الفئة:</label>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCategoryNames([...availableCategories])}
+                          className="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] rounded cursor-pointer"
+                        >
+                          اختر الكل
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCategoryNames([])}
+                          className="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-400 text-[10px] rounded cursor-pointer"
+                        >
+                          إلغاء
+                        </button>
+                      </div>
+                    </div>
+                    <div className="max-h-28 overflow-y-auto space-y-1 p-1 bg-slate-900 rounded-xl border border-slate-800">
+                      {availableCategories.map(cat => {
+                        const isSelected = selectedCategoryNames.includes(cat);
+                        return (
+                          <label
+                            key={cat}
+                            className={`flex items-center gap-2 p-1.5 rounded-lg cursor-pointer text-[11px] ${isSelected ? 'bg-rose-500/20 text-rose-300 font-bold' : 'text-slate-300 hover:bg-slate-800/60'}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedCategoryNames(prev => [...prev, cat]);
+                                } else {
+                                  setSelectedCategoryNames(prev => prev.filter(c => c !== cat));
+                                }
+                              }}
+                              className="accent-rose-500 rounded"
+                            />
+                            <span>{cat}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Product Groups Filter */}
+                  <div className="space-y-1.5 p-3 bg-slate-950/60 rounded-2xl border border-slate-800/80">
+                    <div className="flex items-center justify-between">
+                      <label className="font-bold text-slate-300 font-cairo">مجموعة المنتجات:</label>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedGroupNames([...availableGroups])}
+                          className="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] rounded cursor-pointer"
+                        >
+                          اختر الكل
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedGroupNames([])}
+                          className="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-400 text-[10px] rounded cursor-pointer"
+                        >
+                          إلغاء
+                        </button>
+                      </div>
+                    </div>
+                    <div className="max-h-28 overflow-y-auto space-y-1 p-1 bg-slate-900 rounded-xl border border-slate-800">
+                      {availableGroups.map(grp => {
+                        const isSelected = selectedGroupNames.includes(grp);
+                        return (
+                          <label
+                            key={grp}
+                            className={`flex items-center gap-2 p-1.5 rounded-lg cursor-pointer text-[11px] ${isSelected ? 'bg-rose-500/20 text-rose-300 font-bold' : 'text-slate-300 hover:bg-slate-800/60'}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedGroupNames(prev => [...prev, grp]);
+                                } else {
+                                  setSelectedGroupNames(prev => prev.filter(g => g !== grp));
+                                }
+                              }}
+                              className="accent-rose-500 rounded"
+                            />
+                            <span>{grp}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5. Branch & Priority */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1 font-cairo">الفرع:*</label>
+                    <select
+                      value={branch}
+                      onChange={(e) => setBranch(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white font-sans focus:outline-none focus:border-rose-500"
+                    >
+                      <option value="الكل (كافة الفروع)">الكل (كافة الفروع)</option>
+                      <option value="الفرع الرئيسي">الفرع الرئيسي</option>
+                      <option value="فرع الرياض">فرع الرياض</option>
+                      <option value="فرع جدة">فرع جدة</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1 font-cairo flex items-center gap-1">
+                      <span>الأولوية:*</span>
+                      <span title="ترتيب تطبيق الخصم في حال وجود أكثر من عرض"><Info className="w-3.5 h-3.5 text-slate-500" /></span>
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="999"
+                      value={priority}
+                      onChange={(e) => setPriority(Number(e.target.value))}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white font-mono focus:outline-none focus:border-rose-500"
+                    />
+                  </div>
+                </div>
+
+                {/* 6. Discount Type & Value (Fixed or Percentage) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-rose-950/20 border border-rose-500/30 rounded-2xl">
+                  <div>
+                    <label className="block text-rose-300 font-bold mb-1 font-cairo">نوع الخصم:*</label>
+                    <select
+                      value={discountType}
+                      onChange={(e) => setDiscountType(e.target.value as any)}
+                      className="w-full bg-slate-950 border border-rose-500/40 rounded-xl px-3 py-2.5 text-white font-sans focus:outline-none focus:border-rose-400 font-bold"
+                    >
+                      <option value="percentage">نسبة مئوية (%)</option>
+                      <option value="fixed">مبلغ ثابت (ر.س)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-rose-300 font-bold mb-1 font-cairo">
+                      {discountType === 'percentage' ? 'نسبة الخصم (%):*' : 'مبلغ الخصم (ر.س):*'}
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="0.1"
+                        max={discountType === 'percentage' ? 99 : 99999}
+                        step="any"
+                        required
+                        value={discountValue}
+                        onChange={(e) => setDiscountValue(e.target.value)}
+                        placeholder={discountType === 'percentage' ? 'مثال: 20' : 'مثال: 15.00'}
+                        className="w-full bg-slate-950 border border-rose-500/40 rounded-xl px-3 py-2.5 text-white font-mono font-bold focus:outline-none focus:border-rose-400 pl-8"
+                      />
+                      <span className="absolute left-3 top-2.5 text-rose-400 font-bold">
+                        {discountType === 'percentage' ? '%' : 'ر.س'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 7. Start & End Dates with Interactive Calendar */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1 font-cairo flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5 text-rose-400" />
+                      <span>من تاريخ:*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setActiveDatePicker('start')}
+                      className="w-full bg-slate-950 border border-slate-800 hover:border-rose-400 rounded-xl p-2.5 text-white font-mono text-xs flex items-center justify-between transition-colors cursor-pointer"
+                    >
+                      <span className="font-bold text-rose-200">{startDate || 'اختر تاريخ البداية'}</span>
+                      <Calendar className="w-4 h-4 text-rose-400" />
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1 font-cairo flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5 text-rose-400" />
+                      <span>إلى تاريخ:*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setActiveDatePicker('end')}
+                      className="w-full bg-slate-950 border border-slate-800 hover:border-rose-400 rounded-xl p-2.5 text-white font-mono text-xs flex items-center justify-between transition-colors cursor-pointer"
+                    >
+                      <span className="font-bold text-rose-200">{endDate || 'اختر تاريخ النهاية'}</span>
+                      <Calendar className="w-4 h-4 text-rose-400" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* 8. Price Group Selection */}
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1 font-cairo">مجموعة أسعار البيع:</label>
+                  <select
+                    value={priceGroup}
+                    onChange={(e) => setPriceGroup(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white font-sans focus:outline-none focus:border-rose-500"
+                  >
+                    <option value="الكل">الكل</option>
+                    <option value="سعر التجزئة">سعر التجزئة</option>
+                    <option value="سعر الجملة">سعر الجملة</option>
+                  </select>
+                </div>
+
+                {/* 9. Checkboxes at bottom (Matching Image 2) */}
+                <div className="flex items-center gap-6 py-1">
+                  <label className="flex items-center gap-2 cursor-pointer font-bold select-none text-slate-300">
+                    <input
+                      type="checkbox"
+                      checked={isActive}
+                      onChange={(e) => setIsActive(e.target.checked)}
+                      className="w-4 h-4 rounded accent-rose-500 cursor-pointer"
+                    />
+                    <span>مفعل</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer font-bold select-none text-slate-300">
+                    <input
+                      type="checkbox"
+                      checked={appliesToAllCheckbox}
+                      onChange={(e) => setAppliesToAllCheckbox(e.target.checked)}
+                      className="w-4 h-4 rounded accent-rose-500 cursor-pointer"
+                    />
+                    <span>ينطبق على الكل</span>
+                  </label>
+                </div>
+
+                {/* 10. Live Impact Preview Card */}
+                <div className="p-3.5 bg-emerald-950/30 border border-emerald-500/30 rounded-2xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-emerald-300 font-cairo flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>معاينة حية لتطبيق الخصم:</span>
+                    </span>
+                    <span className="text-[11px] font-bold text-emerald-400 font-mono">
+                      سيؤثر على {targetedProducts.length} صنفاً
+                    </span>
+                  </div>
+
+                  {sampleProduct && (
+                    <div className="p-2 bg-slate-900/80 rounded-xl border border-slate-800 flex items-center justify-between text-[11px] flex-wrap gap-2 font-mono">
+                      <span className="text-slate-300 font-sans font-bold">{sampleProduct.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="line-through text-slate-500">{sampleBasePrice} ر.س</span>
+                        <span className="text-emerald-400 font-bold">{sampleNewPrice} ر.س</span>
+                        <span className="bg-rose-600/30 text-rose-300 px-1.5 py-0.5 rounded text-[10px]">
+                          -{samplePercent}% 🔥
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  <p className="text-[10.5px] text-slate-400 font-sans leading-tight">
+                    * عند الحفظ سيتم تعديل الأسعار فورياً في المتجر وحفظها في Google Sheets في عمودي "سعر_البيع القديم" و"سعر_البيع الجديد".
+                  </p>
+                </div>
+
+                {/* Modal Footer Buttons */}
+                <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setShowFormModal(false)}
+                    className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                  >
+                    إغلاق
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2.5 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-rose-600/25 flex items-center gap-1.5 cursor-pointer transition-all"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>حفظ وتطبيق الخصم</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
-            <div>
-              <label className="block text-slate-400 mb-1 font-bold">معرف العرض في الإكسل (ID):</label>
-              <input
-                type="text"
-                required
-                value={offerId || ""}
-                onChange={(e) => setOfferId(e.target.value.toUpperCase())}
-                placeholder="OFF_01"
-                className="w-full bg-slate-950 border border-pink-500/40 rounded-xl p-2.5 text-pink-300 font-mono font-bold uppercase focus:outline-none focus:border-pink-400"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-400 mb-1 font-bold">اسم أو عنوان العرض:</label>
-              <input
-                type="text"
-                required
-                value={title || ""}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="مثال: تخفيضات الصيف الكبرى"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-pink-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-400 mb-1 font-bold">نسبة الخصم (%):</label>
-              <input
-                type="number"
-                min="1"
-                max="99"
-                required
-                value={discountPercentage ?? ""}
-                onChange={(e) => setDiscountPercentage(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-mono focus:outline-none focus:border-pink-500"
-              />
-            </div>
-
-            {/* Interactive Calendar Date Pickers */}
-            <div>
-              <label className="block text-slate-400 mb-1 font-bold flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-pink-400" />
-                <span>تاريخ البداية (تقويم):</span>
-              </label>
-              <button
-                type="button"
-                onClick={() => setActiveDatePicker('start')}
-                className="w-full bg-slate-950 border border-pink-500/40 hover:border-pink-400 rounded-xl p-2.5 text-white font-mono text-xs flex items-center justify-between transition-colors cursor-pointer group"
-              >
-                <span className="font-bold text-pink-200">{startDate || 'اختر التاريخ'}</span>
-                <Calendar className="w-4 h-4 text-pink-400 group-hover:scale-110 transition-transform" />
-              </button>
-            </div>
-
-            <div>
-              <label className="block text-slate-400 mb-1 font-bold flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-pink-400" />
-                <span>تاريخ النهاية (تقويم):</span>
-              </label>
-              <button
-                type="button"
-                onClick={() => setActiveDatePicker('end')}
-                className="w-full bg-slate-950 border border-pink-500/40 hover:border-pink-400 rounded-xl p-2.5 text-white font-mono text-xs flex items-center justify-between transition-colors cursor-pointer group"
-              >
-                <span className="font-bold text-pink-200">{endDate || 'اختر التاريخ'}</span>
-                <Calendar className="w-4 h-4 text-pink-400 group-hover:scale-110 transition-transform" />
-              </button>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setShowFormModal(false)}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs"
-            >
-              إلغاء
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2 bg-pink-600 hover:bg-pink-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-pink-600/20 flex items-center gap-1.5 cursor-pointer"
-            >
-              <Check className="w-4 h-4" />
-              <span>{editingOffer ? 'تحديث العرض' : 'تفعيل العرض جديد'}</span>
-            </button>
-          </div>
-        </form>
-      )}
+        )}
+      </AnimatePresence>
 
       {/* Date Picker Modal for Start / End dates */}
       <DatePickerModal
@@ -1529,24 +2028,29 @@ export const OffersTab: React.FC<{
             setEndDate(newDate);
           }
         }}
-        title={activeDatePicker === 'start' ? 'اختر تاريخ بداية العرض الترويجي' : 'اختر تاريخ نهاية العرض الترويجي'}
+        title={activeDatePicker === 'start' ? 'اختر تاريخ بداية الخصم' : 'اختر تاريخ نهاية الخصم'}
       />
 
-      {/* Offers List Cards Grid with prominent ID Badges */}
+      {/* Offers & Discounts List Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.length === 0 ? (
           <div className="col-span-full bg-slate-900 border border-slate-800 p-8 rounded-3xl text-center text-slate-500 font-bold">
-            لا توجد عروض ترويجية تطابق البحث
+            لا توجد عروض أو خصومات مسجلة حالياً تطابق البحث
           </div>
         ) : (
           filtered.map(off => (
-            <div key={off.OfferID} className="bg-slate-900 border border-slate-800 hover:border-pink-500/40 p-5 rounded-3xl space-y-3 relative group shadow-xl transition-all">
+            <div key={off.OfferID} className="bg-slate-900 border border-slate-800 hover:border-rose-500/40 p-5 rounded-3xl space-y-3 relative group shadow-xl transition-all">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <IdBadge id={off.OfferID} color="pink" tooltip="معرف العرض في شيت العروض - انقر للنسخ" />
-                  <span className="px-2.5 py-1 bg-pink-500/20 text-pink-300 text-xs font-black rounded-full border border-pink-500/30 flex items-center gap-1">
-                    <Flame className="w-3.5 h-3.5" />
-                    <span>خصم {off.discountPercentage}%</span>
+                  <IdBadge id={off.OfferID} color="pink" tooltip="معرف الخصم في شيت العروض" />
+                  <span className="px-2.5 py-1 bg-rose-500/20 text-rose-300 text-xs font-black rounded-full border border-rose-500/30 flex items-center gap-1 font-mono">
+                    <Flame className="w-3.5 h-3.5 text-amber-300" />
+                    <span>
+                      {off.discountType === 'fixed' 
+                        ? `خصم ${off.discountAmount ?? off.discountPercentage} ر.س ثابت`
+                        : `خصم ${off.discountPercentage}%`
+                      }
+                    </span>
                   </span>
                 </div>
 
@@ -1554,19 +2058,26 @@ export const OffersTab: React.FC<{
                   <button
                     onClick={() => openEditModal(off)}
                     className="p-2 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 rounded-xl transition-colors cursor-pointer"
-                    title="تعديل العرض"
+                    title="تعديل الخصم"
                   >
                     <Edit className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleRevertOffer(off)}
+                    className="p-2 bg-amber-600/20 hover:bg-amber-600/40 text-amber-300 rounded-xl transition-colors cursor-pointer"
+                    title="إلغاء وتصفير الخصم من المنتجات واستعادة الأسعار الأصلية"
+                  >
+                    <RotateCcw className="w-4 h-4" />
                   </button>
                   {onDeleteOffer && (
                     <button
                       onClick={() => {
-                        if (window.confirm(`هل أنت متأكد من حذف العرض "${off.title}" برمز (${off.OfferID})؟`)) {
+                        if (window.confirm(`هل أنت متأكد من حذف الخصم "${off.title}" بالرمز (${off.OfferID})؟`)) {
                           onDeleteOffer(off.OfferID);
                         }
                       }}
                       className="p-2 bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 rounded-xl transition-colors cursor-pointer"
-                      title="حذف العرض"
+                      title="حذف الخصم نهائياً"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -1574,8 +2085,25 @@ export const OffersTab: React.FC<{
                 </div>
               </div>
 
-              <h3 className="text-sm font-bold text-white">{off.title}</h3>
-              <div className="p-2.5 bg-slate-950 rounded-xl border border-slate-800/80 text-xs text-slate-400 font-mono flex items-center gap-1.5">
+              <h3 className="text-sm font-bold text-white font-cairo">{off.title}</h3>
+
+              {/* Target Scope Badge */}
+              <div className="p-2 bg-slate-950/80 rounded-xl border border-slate-800 text-[11px] text-slate-300 font-sans flex items-center justify-between">
+                <span className="text-slate-400">النطاق:</span>
+                <span className="font-bold text-rose-300">
+                  {off.applyToAll
+                    ? 'كافة أصناف المتجر (الكل)'
+                    : off.targetProductIds && off.targetProductIds.length > 0
+                    ? `${off.targetProductIds.length} أصناف محددة`
+                    : off.targetCategoryIds && off.targetCategoryIds.length > 0
+                    ? `فئة: ${off.targetCategoryIds.join(', ')}`
+                    : off.targetGroupIds && off.targetGroupIds.length > 0
+                    ? `مجموعة: ${off.targetGroupIds.join(', ')}`
+                    : 'كافة الأصناف'}
+                </span>
+              </div>
+
+              <div className="p-2 bg-slate-950 rounded-xl border border-slate-800/80 text-xs text-slate-400 font-mono flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-slate-500" />
                 <span>من {formatCleanDate(off.startDate)} إلى {formatCleanDate(off.endDate)}</span>
               </div>
