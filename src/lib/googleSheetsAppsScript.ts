@@ -416,6 +416,11 @@ function doPost(e) {
       return handleBatchUpdateProductPrices(payload.products);
     }
 
+    // 12.2. تصفير وإلغاء كافة الخصومات واستعادة الأسعار الأصلية لجميع المنتجات فورياً
+    if (action === 'reset_all_discounts') {
+      return handleResetAllProductDiscounts(payload.products);
+    }
+
     // 13. حذف صنف وتفريغ صفه فوراً بالـ ID / SKU
     if (action === 'delete_product') {
       const sku = payload.sku || payload.ProductID || payload.productId || (payload.product && payload.product.SKU);
@@ -1409,7 +1414,7 @@ function handleBatchUpdateProductPrices(productsToUpdate) {
   let updatedCount = 0;
 
   // جلب نطاقات أسعار البيع وتاريخ التحديث فقط:
-  // العمود 8 (H): سعر_البيع القديم
+  // العمود 8 (H): سعر_البيع القديم (0 إذا لم يكن هناك خصم)
   // العمود 9 (I): سعر_البيع الجديد
   // العمود 17 (Q): تاريخ_التحديث
   for (let i = 0; i < ids.length; i++) {
@@ -1418,8 +1423,10 @@ function handleBatchUpdateProductPrices(productsToUpdate) {
     const match = updateMap[rowId] || updateMap[rowSku];
     if (match) {
       const rowIndex = i + 2;
-      const origPrice = Number(match.originalPrice !== undefined ? match.originalPrice : match.salePrice) || 0;
       const salePrice = Number(match.salePrice) || 0;
+      // إذا كان هناك سعر أصلي أكبر من سعر البيع، يُسجل في العمود 8، وإلا يُصفر العمود 8
+      const hasDiscount = match.originalPrice !== undefined && match.originalPrice !== null && Number(match.originalPrice) > salePrice;
+      const origPrice = hasDiscount ? Number(match.originalPrice) : 0;
       
       prodSheet.getRange(rowIndex, 8).setValue(origPrice);
       prodSheet.getRange(rowIndex, 9).setValue(salePrice);
@@ -1432,6 +1439,52 @@ function handleBatchUpdateProductPrices(productsToUpdate) {
     success: true, 
     message: "تم تحديث أسعار وتخفيضات " + updatedCount + " منتج في Google Sheets بنجاح!",
     updatedCount: updatedCount 
+  });
+}
+
+/**
+ * 🔄 تصفير كافة الخصومات واستعادة الأسعار الأصلية في شيت المنتجات وشيت العروض بنقرة واحدة
+ */
+function handleResetAllProductDiscounts(productsList) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const prodSheet = ss.getSheetByName("المنتجات");
+  let restoredCount = 0;
+  const now = getFormattedEnglishDate();
+
+  if (prodSheet && prodSheet.getLastRow() > 1) {
+    const lastRow = prodSheet.getLastRow();
+    const oldPrices = prodSheet.getRange(2, 8, lastRow - 1, 1).getValues();
+    const newPrices = prodSheet.getRange(2, 9, lastRow - 1, 1).getValues();
+
+    for (let i = 0; i < oldPrices.length; i++) {
+      const oldP = Number(oldPrices[i][0]) || 0;
+      const newP = Number(newPrices[i][0]) || 0;
+      const rowIndex = i + 2;
+
+      // إذا كان هناك سعر قديم أكبر من سعر البيع الجديد المخفض
+      if (oldP > 0 && oldP >= newP) {
+        prodSheet.getRange(rowIndex, 8).setValue(0); // تصفير السعر القديم
+        prodSheet.getRange(rowIndex, 9).setValue(oldP); // استرجاع السعر الأصلي
+        prodSheet.getRange(rowIndex, 17).setValue(now);
+        restoredCount++;
+      } else if (oldP > 0) {
+        prodSheet.getRange(rowIndex, 8).setValue(0);
+        prodSheet.getRange(rowIndex, 17).setValue(now);
+        restoredCount++;
+      }
+    }
+  }
+
+  // تنظيف وتفريغ صفوف شيت العروض
+  const offersSheet = ss.getSheetByName("العروض");
+  if (offersSheet && offersSheet.getLastRow() > 1) {
+    offersSheet.getRange(2, 1, offersSheet.getLastRow() - 1, offersSheet.getLastColumn()).clearContent();
+  }
+
+  return createJsonResponse({
+    success: true,
+    message: "تم تصفير كافة الخصومات واستعادة الأسعار الأصلية لـ " + restoredCount + " منتج بنجاح في Google Sheets!",
+    restoredCount: restoredCount
   });
 }
 

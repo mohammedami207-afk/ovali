@@ -1276,6 +1276,7 @@ export const OffersTab: React.FC<{
   onUpdateOffer?: (off: Offer, updatedProducts?: Product[]) => void | Promise<void>;
   onDeleteOffer?: (id: string, restoredProducts?: Product[]) => void | Promise<void>;
   onRevertDiscount?: (offer: Offer, restoredProducts?: Product[]) => void | Promise<void>;
+  onResetAllDiscounts?: () => void | Promise<void>;
 }> = ({ 
   offers, 
   products = [], 
@@ -1284,12 +1285,18 @@ export const OffersTab: React.FC<{
   onAddOffer, 
   onUpdateOffer, 
   onDeleteOffer, 
-  onRevertDiscount 
+  onRevertDiscount,
+  onResetAllDiscounts
 }) => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'expired'>('all');
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingOffer, setEditingOffer] = useState<Offer | null>(null);
+
+  // Identify all products currently having discounts in the store
+  const discountedProducts = useMemo(() => {
+    return products.filter(p => (p.originalPrice && p.originalPrice > p.salePrice) || (p.discount && p.discount > 0));
+  }, [products]);
 
   // Form Fields matching user design (Image 2)
   const [offerId, setOfferId] = useState('');
@@ -1563,6 +1570,46 @@ export const OffersTab: React.FC<{
           </button>
         </div>
       </div>
+
+      {/* Alert & Instant Restore Banner for Active Product Discounts */}
+      {discountedProducts.length > 0 && (
+        <div className="bg-gradient-to-r from-amber-950/40 via-rose-950/40 to-slate-900 border border-rose-500/40 p-4 rounded-3xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
+          <div className="flex items-start gap-3.5">
+            <div className="w-10 h-10 rounded-2xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 shrink-0 mt-0.5">
+              <Flame className="w-5 h-5 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-bold text-white text-sm font-cairo">
+                  يوجد حالياً {discountedProducts.length} منتج معروض بأسعار مخفضة في المتجر
+                </h3>
+                {offers.length === 0 && (
+                  <span className="px-2 py-0.5 bg-rose-500/30 text-rose-200 border border-rose-500/40 rounded-lg text-[10px] font-bold">
+                    تم حذف سجلات العروض
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-300 mt-1 font-sans leading-relaxed">
+                {offers.length === 0
+                  ? 'تم حذف سجلات العروض ولكن لا تزال الأسعار المخفضة مسجلة في شيت المنتجات. اضغط على الزر لاستعادة الأسعار الأصلية فوراً وإلغاء الخصم عن كافة المنتجات في المتجر والأكسل.'
+                  : 'يمكنك في أي وقت استعادة الأسعار الأصلية السابقة لكافة المنتجات بنقرة واحدة وتصفير الخصم في المتجر وGoogle Sheets.'
+                }
+              </p>
+            </div>
+          </div>
+
+          {onResetAllDiscounts && (
+            <button
+              type="button"
+              onClick={onResetAllDiscounts}
+              className="w-full md:w-auto px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-2xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-rose-600/30 shrink-0 cursor-pointer transition-all active:scale-95"
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span>استعادة الأسعار الأصلية وإلغاء الخصم ({discountedProducts.length})</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Dynamic Filter Bar */}
       <div className="flex flex-col sm:flex-row items-center gap-2.5">
@@ -2034,8 +2081,28 @@ export const OffersTab: React.FC<{
       {/* Offers & Discounts List Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.length === 0 ? (
-          <div className="col-span-full bg-slate-900 border border-slate-800 p-8 rounded-3xl text-center text-slate-500 font-bold">
-            لا توجد عروض أو خصومات مسجلة حالياً تطابق البحث
+          <div className="col-span-full bg-slate-900 border border-slate-800 p-8 rounded-3xl text-center space-y-3">
+            <div className="w-12 h-12 mx-auto rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center justify-center text-slate-400">
+              <Flame className="w-6 h-6 text-slate-500" />
+            </div>
+            <p className="text-slate-300 font-bold text-sm">
+              لا توجد عروض أو خصومات مسجلة حالياً تطابق البحث
+            </p>
+            {discountedProducts.length > 0 && onResetAllDiscounts && (
+              <div className="pt-2 max-w-md mx-auto">
+                <p className="text-xs text-rose-300 mb-3 font-sans leading-relaxed">
+                  يوجد حالياً {discountedProducts.length} منتج لا تزال معروضة بأسعار مخفضة في المتجر. هل ترغب في استعادة أسعارها الأصلية الآن؟
+                </p>
+                <button
+                  type="button"
+                  onClick={onResetAllDiscounts}
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-2xl text-xs inline-flex items-center gap-2 shadow-lg cursor-pointer transition-all"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span>استعادة الأسعار الأصلية لجميع المنتجات ({discountedProducts.length})</span>
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           filtered.map(off => (
@@ -2072,12 +2139,34 @@ export const OffersTab: React.FC<{
                   {onDeleteOffer && (
                     <button
                       onClick={() => {
-                        if (window.confirm(`هل أنت متأكد من حذف الخصم "${off.title}" بالرمز (${off.OfferID})؟`)) {
-                          onDeleteOffer(off.OfferID);
+                        if (window.confirm(`هل أنت متأكد من حذف الخصم "${off.title}" بالرمز (${off.OfferID})؟\nسيتم أيضاً استعادة الأسعار الأصلية وإلغاء الخصم عن المنتجات المشمولة.`)) {
+                          const targetProds = off.applyToAll
+                            ? products
+                            : products.filter(p => {
+                                if (off.targetProductIds && (off.targetProductIds.includes(p.ProductID) || off.targetProductIds.includes(p.SKU))) return true;
+                                if (off.targetCategoryIds && off.targetCategoryIds.includes(p.category)) return true;
+                                if (off.targetGroupIds && p.group && off.targetGroupIds.includes(p.group)) return true;
+                                return false;
+                              });
+
+                          const targetIdSet = new Set(targetProds.map(p => p.ProductID));
+                          const restoredProducts: Product[] = products.map(p => {
+                            if (!targetIdSet.has(p.ProductID)) return p;
+                            const restoredPrice = (p.originalPrice && p.originalPrice > 0) ? p.originalPrice : p.salePrice;
+                            return {
+                              ...p,
+                              salePrice: restoredPrice,
+                              originalPrice: undefined,
+                              discount: 0,
+                              updatedAt: new Date().toISOString()
+                            };
+                          });
+
+                          onDeleteOffer(off.OfferID, restoredProducts);
                         }
                       }}
                       className="p-2 bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 rounded-xl transition-colors cursor-pointer"
-                      title="حذف الخصم نهائياً"
+                      title="حذف الخصم واستعادة الأسعار الأصلية"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

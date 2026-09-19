@@ -963,6 +963,43 @@ export function App() {
     }
   };
 
+  // Handler to completely restore original prices and clear all discounts across all products
+  const handleClearAllDiscounts = async () => {
+    let restoredCount = 0;
+    const updatedProducts: Product[] = products.map(p => {
+      const hasDiscount = (p.originalPrice && p.originalPrice > p.salePrice) || (p.discount && p.discount > 0);
+      if (hasDiscount) {
+        restoredCount++;
+        const restoredPrice = (p.originalPrice && p.originalPrice > 0) ? p.originalPrice : p.salePrice;
+        return {
+          ...p,
+          salePrice: restoredPrice,
+          originalPrice: undefined,
+          discount: 0,
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return p;
+    });
+
+    setProducts(updatedProducts);
+    saveLocalProducts(updatedProducts);
+
+    logAudit('المدير المسؤول', 'استعادة الأسعار الأصلية وإلغاء كافة الخصومات', `تم تصفير الخصومات واستعادة الأسعار الأصلية لـ ${restoredCount} منتج في المتجر`);
+    addNotification('🔄 تم استعادة الأسعار الأصلية', `تم إلغاء كافة العروض والخصومات واستعادة الأسعار الأساسية لـ ${restoredCount} منتج فورياً في المتجر!`, 'sync');
+
+    // Execute in Google Sheets
+    await executeUnifiedSheetsOperation({
+      action: 'reset_all_discounts',
+      payload: { products: updatedProducts },
+      entityName: 'تصفير الخصومات واستعادة الأسعار الأصلية',
+      operationType: 'تحديث جماعي',
+      webAppUrl: settings.googleAppsScriptUrl,
+      setLoadingState: (loading) => setSyncStatus(loading ? 'syncing' : 'synced'),
+      showToast: addNotification
+    });
+  };
+
   // Store Settings Handler with instant Google Sheets sync
   const handleSaveStoreSettings = async (newSettings: AppSettings) => {
     setSettings(newSettings);
@@ -2855,6 +2892,7 @@ ${newInvoice.itemsSummary}
                         onDeleteProduct={handleDeleteProduct}
                         onAddCategory={handleAddCategory}
                         onBatchImport={handleBatchImportProducts}
+                        onResetAllDiscounts={handleClearAllDiscounts}
                       />
                     )}
 
@@ -2935,6 +2973,7 @@ ${newInvoice.itemsSummary}
                         onUpdateOffer={handleUpdateOffer}
                         onDeleteOffer={handleDeleteOffer}
                         onRevertDiscount={handleRevertOffer}
+                        onResetAllDiscounts={handleClearAllDiscounts}
                       />
                     )}
 

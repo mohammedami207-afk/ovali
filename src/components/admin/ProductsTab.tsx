@@ -22,7 +22,8 @@ import {
   Clock,
   BookOpen,
   Printer,
-  Star
+  Star,
+  RotateCcw
 } from 'lucide-react';
 import { Product, Category } from '../../types';
 import { exportProductsExcel, parseProductsExcel, exportToExcel } from '../../lib/excelHelper';
@@ -40,6 +41,7 @@ interface ProductsTabProps {
   onAddCategory?: (c: Category) => void;
   onBatchImport?: (products: Product[]) => void;
   onSeedProductsToSupabase?: () => void;
+  onResetAllDiscounts?: () => void | Promise<void>;
 }
 
 export const ProductsTab: React.FC<ProductsTabProps> = ({
@@ -51,11 +53,17 @@ export const ProductsTab: React.FC<ProductsTabProps> = ({
   onDeleteProduct,
   onAddCategory,
   onBatchImport,
-  onSeedProductsToSupabase
+  onSeedProductsToSupabase,
+  onResetAllDiscounts
 }) => {
   const [search, setSearch] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+
+  // Count products with active discounts
+  const discountedCount = useMemo(() => {
+    return products.filter(p => (p.originalPrice && p.originalPrice > p.salePrice) || (p.discount && p.discount > 0)).length;
+  }, [products]);
 
   // Excel Sync Engine Modal States
   const [showExcelModal, setShowExcelModal] = useState(false);
@@ -622,6 +630,18 @@ export const ProductsTab: React.FC<ProductsTabProps> = ({
             <BookOpen className="w-4 h-4 text-white" />
             <span>كتالوج المنتجات PDF</span>
           </button>
+
+          {/* Quick Clear All Discounts & Restore Original Prices */}
+          {discountedCount > 0 && onResetAllDiscounts && (
+            <button
+              onClick={onResetAllDiscounts}
+              className="px-3.5 py-2 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+              title="استعادة الأسعار الأصلية وإلغاء كافة الخصومات عن جميع المنتجات فورياً ومزامنتها بـ Google Sheets"
+            >
+              <RotateCcw className="w-4 h-4 text-rose-400" />
+              <span>استعادة الأسعار الأصلية ({discountedCount})</span>
+            </button>
+          )}
 
           {/* Export Products to Excel */}
           <button
