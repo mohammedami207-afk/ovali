@@ -72,6 +72,8 @@ export const defaultSettings: AppSettings = {
   planMaxEmployees: APP_CONFIG.subscription.maxEmployees,
   autoSyncOffline: APP_CONFIG.subscription.autoSyncOffline,
   isSheetConnected: false,
+  priceMarkupType: 'none',
+  priceMarkupValue: 0,
   appDownloadAndroid: APP_CONFIG.appDownload.androidUrl,
   appDownloadiOS: APP_CONFIG.appDownload.iosUrl,
   appDownloadHuawei: APP_CONFIG.appDownload.huaweiUrl,

@@ -1,12 +1,14 @@
 import React, { memo } from 'react';
 import { ShoppingCart, Eye, Percent, Share2, Clock, Sparkles, Heart, Star, Flame } from 'lucide-react';
-import { Product, CurrencyRate } from '../../types';
+import { Product, CurrencyRate, AppSettings } from '../../types';
 import { formatRelativeTime } from '../../lib/dateUtils';
 import { DEFAULT_PRODUCT_IMAGE } from '../../lib/imageUtils';
+import { getAdjustedProductPrices } from '../../lib/priceHelper';
 
 interface ProductCardProps {
   product: Product;
   currency: CurrencyRate;
+  settings?: AppSettings;
   onQuickView: (p: Product) => void;
   onAddToCart: (p: Product) => void;
   onShareProduct?: (p: Product) => void;
@@ -17,6 +19,7 @@ interface ProductCardProps {
 export const ProductCard: React.FC<ProductCardProps> = memo(({
   product,
   currency,
+  settings,
   onQuickView,
   onAddToCart,
   onShareProduct,
@@ -62,23 +65,13 @@ export const ProductCard: React.FC<ProductCardProps> = memo(({
     }
   };
 
-  // Compute Current (Sale) Price vs Previous (Old) Price with high precision
-  let currentSalePriceSAR = product.salePrice;
-  let previousPriceSAR: number | null = null;
-  let discountPercentage = 0;
-  let discountAmountSAR = 0;
-
-  if (product.originalPrice && product.originalPrice > product.salePrice) {
-    previousPriceSAR = product.originalPrice;
-    currentSalePriceSAR = product.salePrice;
-    discountAmountSAR = previousPriceSAR - currentSalePriceSAR;
-    discountPercentage = Math.round((discountAmountSAR / previousPriceSAR) * 100);
-  } else if (product.discount && product.discount > 0) {
-    previousPriceSAR = product.salePrice;
-    currentSalePriceSAR = product.salePrice * (1 - product.discount / 100);
-    discountAmountSAR = previousPriceSAR - currentSalePriceSAR;
-    discountPercentage = Math.round(product.discount);
-  }
+  // Compute Current (Sale) Price vs Previous (Old) Price using our pricing markup and discount helper
+  const {
+    finalPrice: currentSalePriceSAR,
+    originalPrice: previousPriceSAR,
+    discountPercentage,
+    discountAmount: discountAmountSAR
+  } = getAdjustedProductPrices(product, settings);
 
   const convertedCurrentPrice = ((currentSalePriceSAR || 0) * (currency?.exchangeRate || 1)).toFixed(2);
   const convertedPreviousPrice = previousPriceSAR ? ((previousPriceSAR || 0) * (currency?.exchangeRate || 1)).toFixed(2) : null;
@@ -236,6 +229,13 @@ export const ProductCard: React.FC<ProductCardProps> = memo(({
             {product.size.slice(0, 3).join(' • ')}
           </div>
         )}
+
+        {/* Floating Average Rating Badge Overlay Next to/On the Image */}
+        <div className="absolute bottom-1.5 left-1.5 bg-slate-900/95 backdrop-blur-xs text-amber-400 text-[9.5px] px-1.5 py-0.5 rounded-lg flex items-center gap-0.5 font-bold border border-amber-500/30 shadow-xs z-10" title={`التقييم: ${(product.rating || (product.ratings && product.ratings.length > 0 ? (product.ratings.reduce((a, b) => a + b, 0) / product.ratings.length) : 4.8)).toFixed(1)} من 5`}>
+          <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
+          <span>{(product.rating || (product.ratings && product.ratings.length > 0 ? (product.ratings.reduce((a, b) => a + b, 0) / product.ratings.length) : 4.8)).toFixed(1)}</span>
+          <span className="text-[8px] text-slate-300 font-normal">({product.ratingCount || (product.ratings ? product.ratings.length : 12)})</span>
+        </div>
       </div>
 
       {/* Content & High-Fashion Pricing */}

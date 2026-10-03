@@ -946,6 +946,7 @@ export const StoreHome: React.FC<StoreHomeProps & { onOpenCatalog?: () => void }
                   key={`${product.ProductID || 'prd'}_${idx}`}
                   product={product}
                   currency={currency}
+                  settings={settings}
                   onQuickView={onQuickView}
                   onAddToCart={onAddToCart}
                   onShareProduct={onShareProduct}

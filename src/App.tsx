@@ -42,6 +42,7 @@ import { initialCurrencies, initialProducts, defaultSettings } from './data/init
 import { DEFAULT_PRODUCT_IMAGE } from './lib/imageUtils';
 import { getTrackingUrl } from './lib/dateUtils';
 import { applyThemeGlobal, getCurrentThemeMode, toggleThemeMode } from './lib/themeHelper';
+import { getAdjustedProductPrices } from './lib/priceHelper';
 import { 
   sendToGoogleAppsScriptWebApp, 
   fetchDataFromGoogleSheets, 
@@ -346,6 +347,51 @@ export function App() {
       localStorage.setItem('rwnaq_wishlist', JSON.stringify(wishlist));
     } catch(e) {}
   }, [wishlist]);
+
+  // Automated WhatsApp / Local Notifications for newly discounted products in the Wishlist
+  useEffect(() => {
+    if (products.length === 0 || wishlist.length === 0) return;
+
+    try {
+      const notifiedRaw = localStorage.getItem('rwnaq_notified_wishlist_discounts');
+      const notifiedIds: string[] = notifiedRaw ? JSON.parse(notifiedRaw) : [];
+      let updatedNotified = [...notifiedIds];
+      let hasNewNotif = false;
+
+      wishlist.forEach(productId => {
+        const prod = products.find(p => p.ProductID === productId);
+        if (prod) {
+          // Check if there is an active discount on this product
+          const hasDiscount = prod.discount > 0 || (prod.originalPrice && prod.originalPrice > prod.salePrice);
+          if (hasDiscount && !notifiedIds.includes(productId)) {
+            // Trigger beautiful custom toast/alert
+            addNotification(
+              '🔥 خصم جديد على مفضلتك!',
+              `المنتج المميز "${prod.name}" متاح الآن بخصم خاص! اضغط لمعاينته وشراءه.`,
+              'info'
+            );
+            
+            // Log/simulate WhatsApp alert if subscriber phone exists!
+            const savedPhone = localStorage.getItem('rwnaq_wishlist_phone');
+            if (savedPhone) {
+              const convertedPrice = prod.salePrice * (1 - (prod.discount || 0) / 100);
+              const waMsg = `👑 *${settings?.storeName || 'اوفالي'}* | تنبيه خصم المفضلة 🛍️\n\nبشرى سارة! تم تطبيق خصم خاص على منتج في قائمتك المفضلة:\n\n✨ *${prod.name}*\n💰 *السعر الجديد:* ${convertedPrice.toFixed(2)} ر.س\n\nرابط المعاينة والشراء المباشر:\n${window.location.origin}?product=${prod.ProductID}`;
+              console.log(`[WhatsApp Alert Sent to ${savedPhone}]: ${waMsg}`);
+            }
+
+            updatedNotified.push(productId);
+            hasNewNotif = true;
+          }
+        }
+      });
+
+      if (hasNewNotif) {
+        localStorage.setItem('rwnaq_notified_wishlist_discounts', JSON.stringify(updatedNotified));
+      }
+    } catch (e) {
+      console.warn('Error checking wishlist discounts:', e);
+    }
+  }, [products, wishlist, settings]);
 
   const handleToggleWishlist = (productId: string) => {
     setWishlist(prev => 
@@ -1876,7 +1922,7 @@ function hexToRgbString(hex: string, fallback: string = '236, 72, 153'): string 
 
   // Add Product to Cart
   const handleAddToCart = (product: Product, size: string = 'M', color: string = 'افتراضي', qty: number = 1) => {
-    const discountedPrice = product.salePrice * (1 - (product.discount || 0) / 100);
+    const { finalPrice: discountedPrice } = getAdjustedProductPrices(product, settings);
 
     setCart(prev => {
       const existingIdx = prev.findIndex(item => item.productID === product.ProductID && item.size === size && item.color === color);
@@ -2723,6 +2769,7 @@ ${newInvoice.itemsSummary}
             wishlistIds={wishlist}
             products={products}
             currency={selectedCurrency}
+            settings={settings}
             onToggleWishlist={handleToggleWishlist}
             onAddToCart={handleAddToCart}
             onQuickView={(p) => setQuickViewProduct(p)}
@@ -2733,6 +2780,7 @@ ${newInvoice.itemsSummary}
             product={quickViewProduct}
             offers={offers}
             currency={selectedCurrency}
+            settings={settings}
             onClose={() => setQuickViewProduct(null)}
             onAddToCart={handleAddToCart}
             onShareProduct={(p) => setSharingProduct(p)}

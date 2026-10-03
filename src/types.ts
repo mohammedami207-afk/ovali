@@ -290,6 +290,9 @@ export interface AppSettings {
 
   autoSyncOffline: boolean;
   isSheetConnected: boolean;
+  // Price markup configurations (زيادة أسعار المنتجات)
+  priceMarkupType?: 'none' | 'percentage' | 'fixed';
+  priceMarkupValue?: number;
   // App Download Links & Settings (Synced with Google Sheets)
   appDownloadAndroid?: string;
   appDownloadiOS?: string;

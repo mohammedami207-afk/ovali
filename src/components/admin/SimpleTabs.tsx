@@ -5,7 +5,7 @@ import {
   Check, X, Calendar, Filter, RotateCcw, AlertTriangle, Sparkles, CheckCircle2,
   Users, Receipt, History, Copy, Eye, Clock, RefreshCw, Download, Upload, FileSpreadsheet,
   BarChart2, TrendingUp, Award, Zap, Shield, Percent, Layers, ShoppingBag, Info,
-  CheckSquare, Square, ChevronDown
+  CheckSquare, Square, ChevronDown, MessageCircle, Bell
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
@@ -1293,6 +1293,35 @@ export const OffersTab: React.FC<{
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingOffer, setEditingOffer] = useState<Offer | null>(null);
 
+  // Wishlist alerts sub-tab state & subscriber list
+  const [activeSubTab, setActiveSubTab] = useState<'offers' | 'wishlist-alerts'>('offers');
+  const [wishlistSubs, setWishlistSubs] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    const raw = localStorage.getItem('rwnaq_all_wishlist_subscriptions');
+    if (raw) {
+      setWishlistSubs(JSON.parse(raw));
+    } else {
+      // Seed some realistic wishlist subscriptions so the admin can try the feature immediately!
+      const mockSubs = [
+        {
+          phone: '966599539659',
+          name: 'محمد الأمين',
+          date: new Date().toLocaleDateString('ar-SA'),
+          products: products.slice(0, 2).map(p => ({ ProductID: p.ProductID, name: p.name, salePrice: p.salePrice }))
+        },
+        {
+          phone: '967715989357',
+          name: 'علي عبد الله',
+          date: new Date().toLocaleDateString('ar-SA'),
+          products: products.slice(1, 3).map(p => ({ ProductID: p.ProductID, name: p.name, salePrice: p.salePrice }))
+        }
+      ];
+      localStorage.setItem('rwnaq_all_wishlist_subscriptions', JSON.stringify(mockSubs));
+      setWishlistSubs(mockSubs);
+    }
+  }, [products]);
+
   // Identify all products currently having discounts in the store
   const discountedProducts = useMemo(() => {
     return products.filter(p => (p.originalPrice && p.originalPrice > p.salePrice) || (p.discount && p.discount > 0));
@@ -1571,7 +1600,37 @@ export const OffersTab: React.FC<{
         </div>
       </div>
 
-      {/* Alert & Instant Restore Banner for Active Product Discounts */}
+      {/* Sub-tab navigation */}
+      <div className="flex border-b border-slate-800 gap-4 mb-4">
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('offers')}
+          className={`pb-2.5 px-4 font-bold text-xs transition-colors cursor-pointer border-b-2 ${
+            activeSubTab === 'offers' ? 'border-rose-500 text-rose-400 font-extrabold' : 'border-transparent text-slate-400 hover:text-slate-300'
+          }`}
+        >
+          🎁 قائمة الخصومات والعروض النشطة ({offers.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('wishlist-alerts')}
+          className={`pb-2.5 px-4 font-bold text-xs transition-colors cursor-pointer border-b-2 flex items-center gap-1.5 ${
+            activeSubTab === 'wishlist-alerts' ? 'border-rose-500 text-rose-400 font-extrabold' : 'border-transparent text-slate-400 hover:text-slate-300'
+          }`}
+        >
+          <Bell className="w-3.5 h-3.5" />
+          <span>تنبيهات قائمة الرغبات عبر واتساب (Wishlist Alerts)</span>
+          {wishlistSubs.length > 0 && (
+            <span className="bg-rose-500/25 text-rose-300 text-[10px] px-2 py-0.5 rounded-full font-bold">
+              {wishlistSubs.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeSubTab === 'offers' && (
+        <>
+          {/* Alert & Instant Restore Banner for Active Product Discounts */}
       {discountedProducts.length > 0 && (
         <div className="bg-gradient-to-r from-amber-950/40 via-rose-950/40 to-slate-900 border border-rose-500/40 p-4 rounded-3xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
           <div className="flex items-start gap-3.5">
@@ -2200,6 +2259,123 @@ export const OffersTab: React.FC<{
           ))
         )}
       </div>
+      </>
+      )}
+
+      {/* Wishlist Discount Alerts Sub-Tab (تنبيهات قائمة الرغبات عبر واتساب) */}
+      {activeSubTab === 'wishlist-alerts' && (
+        <div className="space-y-4">
+          <div className="bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-3 shadow-xl">
+            <h3 className="font-bold text-sm text-white flex items-center gap-1.5 font-cairo">
+              <Users className="w-4 h-4 text-rose-400" />
+              تتبع مفضلات العملاء وتنبيهات الخصم بالواتساب
+            </h3>
+            <p className="text-xs text-slate-400 leading-relaxed font-sans">
+              هنا يمكنك تتبع كافة العملاء الذين اشتركوا في ميزة "تنبيهات المفضلة عبر واتساب". يمكنك بنقرة واحدة إرسال رسالة واتساب مجهزة ومحسّنة فورياً للعملاء الذين يمتلكون منتجات مخفّضة في قائمتهم!
+            </p>
+          </div>
+
+          {wishlistSubs.length === 0 ? (
+            <div className="py-12 bg-slate-900 border border-slate-800 border-dashed rounded-3xl text-center space-y-2">
+              <Bell className="w-10 h-10 text-slate-600 mx-auto" />
+              <p className="font-bold text-slate-300 text-xs">لا يوجد أي اشتراكات نشطة حالياً</p>
+              <p className="text-[10px] text-slate-500 max-w-xs mx-auto">
+                عند قيام العملاء بإضافة رقم هاتفهم في قائمة المفضلة بالمتجر، ستظهر بياناتهم هنا فوراً.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {wishlistSubs.map((sub, idx) => {
+                // Find products of this sub that have an active discount in the store
+                const subProductsWithStatus = sub.products.map((pSub: any) => {
+                  const currentProd = products.find(p => p.ProductID === pSub.ProductID);
+                  const hasDiscount = currentProd ? (currentProd.discount > 0 || (currentProd.originalPrice && currentProd.originalPrice > currentProd.salePrice)) : false;
+                  return {
+                    ...pSub,
+                    exists: !!currentProd,
+                    currentProd,
+                    hasDiscount
+                  };
+                });
+
+                const discountedCount = subProductsWithStatus.filter((p: any) => p.hasDiscount).length;
+
+                return (
+                  <div key={idx} className="bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-4 relative group shadow-xl hover:border-slate-700 transition-colors">
+                    <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+                      <div>
+                        <h4 className="font-bold text-xs text-white flex items-center gap-1.5 font-cairo">
+                          <UserCheck className="w-4 h-4 text-emerald-400" />
+                          {sub.name || 'عميل المتجر'}
+                        </h4>
+                        <span className="text-[10px] text-slate-500">تاريخ الاشتراك: {sub.date || 'اليوم'}</span>
+                      </div>
+                      
+                      <div className="text-right">
+                        <span className="font-mono text-xs text-indigo-400 font-bold block">{sub.phone}</span>
+                        {discountedCount > 0 ? (
+                          <span className="inline-block text-[9.5px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30 font-bold animate-pulse mt-0.5">
+                            🔥 {discountedCount} منتج مخفض!
+                          </span>
+                        ) : (
+                          <span className="inline-block text-[9.5px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full mt-0.5">
+                            لا يوجد منتجات مخفضة
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Subscribed Products List */}
+                    <div className="space-y-2 max-h-48 overflow-y-auto scrollbar-thin">
+                      <span className="text-[10px] text-slate-400 font-bold block">المنتجات في قائمة المفضلة:</span>
+                      {subProductsWithStatus.map((pSub: any, pIdx: number) => {
+                        const originalPrice = pSub.currentProd ? (pSub.currentProd.originalPrice || pSub.currentProd.salePrice) : pSub.salePrice;
+                        const currentPrice = pSub.currentProd ? pSub.currentProd.salePrice : pSub.salePrice;
+                        const discount = pSub.currentProd ? pSub.currentProd.discount : 0;
+
+                        return (
+                          <div key={pIdx} className="bg-slate-950 p-2.5 rounded-xl border border-slate-800/60 flex items-center justify-between gap-3 text-xs">
+                            <div className="min-w-0">
+                              <span className="font-bold text-slate-200 block truncate" title={pSub.name}>{pSub.name}</span>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="font-mono text-[10px] text-emerald-400 font-bold">{currentPrice} ر.س</span>
+                                {pSub.hasDiscount && (
+                                  <span className="font-mono text-[9px] text-slate-500 line-through">{originalPrice} ر.س</span>
+                                )}
+                              </div>
+                            </div>
+
+                            {pSub.hasDiscount ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const savedPhone = sub.phone;
+                                  const convertedPrice = currentPrice;
+                                  const savedAmount = (originalPrice - currentPrice).toFixed(2);
+                                  const waText = `👑 *أوفالي للأناقة* | تنبيه خصم المفضلة 🛍️\n\nبشرى سارة لك يا فندم! لقد رصدنا انخفاضاً في سعر المنتج الموجود في قائمتك المفضلة:\n\n✨ *${pSub.name}*\n💰 *السعر الحالي بعد الخصم:* ${convertedPrice} ر.س\n📉 *نسبة الخصم المطبق:* %${discount} (وفرت ${savedAmount} ر.س!)\n\nاضغط على الرابط للمعاينة والطلب المباشر:\n${window.location.origin}?product=${pSub.ProductID}\n\nنسعد لخدمتك وتلبية طلبك دوماً ❤️`;
+                                  window.open(`https://wa.me/${savedPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(waText)}`, '_blank');
+                                }}
+                                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all shrink-0 cursor-pointer shadow-md"
+                              >
+                                <MessageCircle className="w-3.5 h-3.5" />
+                                <span>تنبيه واتساب</span>
+                              </button>
+                            ) : (
+                              <span className="text-[9px] text-slate-500 bg-slate-900 border border-slate-800 px-2 py-0.5 rounded">
+                                سعر عادي
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

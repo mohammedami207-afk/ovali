@@ -1351,6 +1351,47 @@ export const StoreSettingsTab: React.FC<StoreSettingsTabProps> = ({
                 />
               </div>
             </div>
+
+            {/* Price Markup (زيادة أسعار المنتجات) */}
+            <div className="pt-5 border-t border-theme-card space-y-4">
+              <div className="flex items-center gap-2">
+                <Sliders className="w-5 h-5 text-theme-primary" />
+                <span className="font-bold text-sm text-theme-main">زيادة أسعار المنتجات تلقائياً (Markup / زيادة إضافية)</span>
+              </div>
+              <p className="text-xs text-theme-subtext">
+                تتيح لك هذه الميزة زيادة أسعار البيع لكافة المنتجات في المتجر إما بنسبة مئوية محددة أو بمبلغ إضافي ثابت، وفي حال وجود عروض أو خصومات، فسيتم تطبيق الخصم على السعر بعد الزيادة بشكل طبيعي وتلقائي.
+              </p>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div className="space-y-1.5">
+                  <label className="font-bold text-theme-main">طريقة تطبيق الزيادة:</label>
+                  <select
+                    value={formData.priceMarkupType || 'none'}
+                    onChange={(e) => setFormData({ ...formData, priceMarkupType: e.target.value as 'none' | 'percentage' | 'fixed' })}
+                    className="w-full bg-theme-inner border border-theme-card rounded-2xl p-3 text-theme-main focus:outline-none focus:border-theme-primary font-bold"
+                  >
+                    <option value="none">تعطيل الزيادة (عرض السعر الأساسي للمنتج)</option>
+                    <option value="percentage">زيادة بنسبة مئوية (%)</option>
+                    <option value="fixed">زيادة بمبلغ ثابت (ر.س)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-bold text-theme-main">قيمة الزيادة المطبقة:</label>
+                  <input
+                    type="number"
+                    disabled={!formData.priceMarkupType || formData.priceMarkupType === 'none'}
+                    value={formData.priceMarkupValue ?? 0}
+                    onChange={(e) => setFormData({ ...formData, priceMarkupValue: Number(e.target.value) || 0 })}
+                    className={`w-full bg-theme-inner border border-theme-card rounded-2xl p-3 text-theme-main focus:outline-none focus:border-theme-primary font-mono ${
+                      (!formData.priceMarkupType || formData.priceMarkupType === 'none') ? 'opacity-40 cursor-not-allowed' : ''
+                    }`}
+                    placeholder="مثال: 10 أو 15"
+                    min="0"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

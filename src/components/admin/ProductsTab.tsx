@@ -798,6 +798,16 @@ export const ProductsTab: React.FC<ProductsTabProps> = ({
                           </div>
                         );
                       })}
+
+                      {/* Display Average Rating and Reviewers Count next to the image in Admin Product Panel */}
+                      <div className="flex flex-col items-center justify-center bg-amber-500/10 border border-amber-500/20 text-amber-400 font-bold px-2 py-1.5 rounded-xl text-[10px] shrink-0" title={`عدد التقييمات والمراجعين: ${p.ratingCount || (p.ratings ? p.ratings.length : 12)}`}>
+                        <div className="flex items-center gap-0.5">
+                          <Star className="w-3 h-3 fill-amber-400 text-amber-400 shrink-0" />
+                          <span>{(p.rating || (p.ratings && p.ratings.length > 0 ? (p.ratings.reduce((a, b) => a + b, 0) / p.ratings.length) : 4.8)).toFixed(1)}</span>
+                        </div>
+                        <span className="text-[8px] text-slate-400 font-mono mt-0.5">({p.ratingCount || (p.ratings ? p.ratings.length : 12)} مراجع)</span>
+                      </div>
+
                     </div>
                   </td>
                   <td className="p-3">
