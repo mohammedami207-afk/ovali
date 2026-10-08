@@ -97,6 +97,7 @@ export const StoreHome: React.FC<StoreHomeProps & { onOpenCatalog?: () => void }
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [isFilterPanelVisible, setIsFilterPanelVisible] = useState(false);
   const [isStoreInfoVisible, setIsStoreInfoVisible] = useState(false);
+  const [isVerificationExpanded, setIsVerificationExpanded] = useState(false);
   
   const [localSelectedGroup, setLocalSelectedGroup] = useState<string>('all');
   const selectedGroup = propsSelectedGroup !== undefined ? propsSelectedGroup : localSelectedGroup;
@@ -1214,97 +1215,151 @@ export const StoreHome: React.FC<StoreHomeProps & { onOpenCatalog?: () => void }
       )}
 
       {/* Saudi Trust & Official Business Verification Section */}
-      <div className="mt-12 p-6 rounded-3xl bg-theme-card border border-theme-card shadow-xl space-y-6 backdrop-blur-md">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-b border-theme-card pb-5">
-          <div className="flex items-center gap-3 text-right">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 flex items-center justify-center shrink-0">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-theme-main text-sm sm:text-base">متجر سعودي معتمد وموثق رسمياً</h3>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 font-mono font-bold border border-emerald-500/30">
-                  ZATCA & منصة الأعمال
-                </span>
+      <div className="mt-12 transition-all duration-300 ease-in-out">
+        {!isVerificationExpanded ? (
+          /* Collapsed Version (Default State) as requested by the user */
+          <div className="p-4 rounded-3xl bg-theme-card/85 border border-theme-card/70 shadow-lg flex flex-col md:flex-row items-center justify-between gap-4 backdrop-blur-md transition-all duration-300">
+            <div className="flex items-center gap-3.5 text-right w-full md:w-auto">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center shrink-0 shadow-inner">
+                <ShieldCheck className="w-5 h-5 animate-pulse" />
               </div>
-              <p className="text-xs text-theme-subtext">مسجل في المركز السعودي للأعمال وموثق برقم سجل تجاري ورقم ضريبي معتمد</p>
+              <div className="space-y-1">
+                {/* Glowing Mini Icons Above text "كا ايقونات فوق" */}
+                <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                  <span className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded-lg border border-emerald-500/20">
+                    <ShieldCheck className="w-3 h-3" /> موثق
+                  </span>
+                  <span className="flex items-center gap-1 text-[9px] font-bold text-indigo-500 bg-indigo-500/10 px-1.5 py-0.5 rounded-lg border border-indigo-500/20">
+                    <Receipt className="w-3 h-3" /> ZATCA
+                  </span>
+                  <span className="flex items-center gap-1 text-[9px] font-bold text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-lg border border-amber-500/20">
+                    <Clock className="w-3 h-3" /> الضمان
+                  </span>
+                  <span className="flex items-center gap-1 text-[9px] font-bold text-sky-500 bg-sky-500/10 px-1.5 py-0.5 rounded-lg border border-sky-500/20">
+                    <Truck className="w-3 h-3" /> التوصيل
+                  </span>
+                  <span className="flex items-center gap-1 text-[9px] font-bold text-pink-500 bg-pink-500/10 px-1.5 py-0.5 rounded-lg border border-pink-500/20">
+                    <MapPin className="w-3 h-3" /> الرياض وصنعاء
+                  </span>
+                </div>
+                <h4 className="font-bold text-theme-main text-xs sm:text-sm">
+                  معلومات وعناوين وفروع المتجر (عن المتجر والشحن) لتراخيص الهوية وفروع الرياض وصنعاء والتوصيل والواتساب
+                </h4>
+              </div>
             </div>
-          </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {settings?.saudiBusinessVerificationUrl && (
-              <a
-                href={settings.saudiBusinessVerificationUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all"
-              >
-                <span>التحقق في منصة الأعمال</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-            )}
+            <button
+              type="button"
+              onClick={() => setIsVerificationExpanded(true)}
+              className="w-full md:w-auto px-5 py-2.5 bg-gradient-to-r from-theme-primary to-theme-secondary hover:opacity-95 text-white font-bold text-xs rounded-2xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95"
+            >
+              <Eye className="w-4 h-4" />
+              <span>إظهار تفاصيل المتجر</span>
+            </button>
+          </div>
+        ) : (
+          /* Expanded Version */
+          <div className="p-6 rounded-3xl bg-theme-card border border-theme-card shadow-xl space-y-6 backdrop-blur-md animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-b border-theme-card pb-5">
+              <div className="flex items-center gap-3 text-right">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-theme-main text-sm sm:text-base">متجر سعودي معتمد وموثق رسمياً</h3>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 font-mono font-bold border border-emerald-500/30">
+                      ZATCA & منصة الأعمال
+                    </span>
+                  </div>
+                  <p className="text-xs text-theme-subtext">مسجل في المركز السعودي للأعمال وموثق برقم سجل تجاري ورقم ضريبي معتمد</p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
+                {settings?.saudiBusinessVerificationUrl && (
+                  <a
+                    href={settings.saudiBusinessVerificationUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all"
+                  >
+                    <span>التحقق في منصة الأعمال</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                )}
+                {onOpenPolicies && (
+                  <button
+                    onClick={() => onOpenPolicies('verification')}
+                    className="px-4 py-2 bg-theme-inner text-theme-main border border-theme-card hover:border-theme-primary/50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    <Info className="w-3.5 h-3.5 text-theme-primary" />
+                    <span>عرض وثائق وسجل المتجر</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setIsVerificationExpanded(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <EyeOff className="w-3.5 h-3.5" />
+                  <span>إخفاء التفاصيل</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Verification Credentials Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+              <div className="p-3.5 bg-theme-inner rounded-2xl border border-theme-card space-y-1">
+                <span className="text-theme-subtext block text-[10px]">رقم السجل التجاري:</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-mono font-bold text-sm block">
+                  {settings?.commercialRegisterNumber || '7033543294'}
+                </span>
+                <span className="text-[10px] text-theme-subtext">سجل تجاري نشط ومعتمد</span>
+              </div>
+
+              <div className="p-3.5 bg-theme-inner rounded-2xl border border-theme-card space-y-1">
+                <span className="text-theme-subtext block text-[10px]">الرقم الضريبي (ZATCA):</span>
+                <span className="text-indigo-600 dark:text-indigo-400 font-mono font-bold text-sm block">
+                  {settings?.taxNumber || '310123456700003'}
+                </span>
+                <span className="text-[10px] text-theme-subtext">ضريبة القيمة المضافة 15%</span>
+              </div>
+
+              <div className="p-3.5 bg-theme-inner rounded-2xl border border-theme-card space-y-1">
+                <span className="text-theme-subtext block text-[10px]">الضمان الذهبي والاسترجاع:</span>
+                <span className="text-amber-600 dark:text-amber-400 font-bold text-xs block">
+                  استبدال واسترجاع خلال 7 أيام
+                </span>
+                <span className="text-[10px] text-theme-subtext">ضمان جودة وأصالة المنتج %100</span>
+              </div>
+
+              <div className="p-3.5 bg-theme-inner rounded-2xl border border-theme-card space-y-1">
+                <span className="text-theme-subtext block text-[10px]">تتبع ومسار الشحنات:</span>
+                <span className="text-sky-600 dark:text-sky-400 font-bold text-xs block">
+                  أرامكس • سمسا • سبل • ريدبوكس
+                </span>
+                <span className="text-[10px] text-theme-subtext">توصيل لكافة مدن المملكة واليمن</span>
+              </div>
+            </div>
+
+            {/* Policy Quick Links */}
             {onOpenPolicies && (
-              <button
-                onClick={() => onOpenPolicies('verification')}
-                className="px-4 py-2 bg-theme-inner text-theme-main border border-theme-card hover:border-theme-primary/50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-              >
-                <Info className="w-3.5 h-3.5 text-theme-primary" />
-                <span>عرض وثائق وسجل المتجر</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Verification Credentials Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-          <div className="p-3.5 bg-theme-inner rounded-2xl border border-theme-card space-y-1">
-            <span className="text-theme-subtext block text-[10px]">رقم السجل التجاري:</span>
-            <span className="text-emerald-600 dark:text-emerald-400 font-mono font-bold text-sm block">
-              {settings?.commercialRegisterNumber || '7033543294'}
-            </span>
-            <span className="text-[10px] text-theme-subtext">سجل تجاري نشط ومعتمد</span>
-          </div>
-
-          <div className="p-3.5 bg-theme-inner rounded-2xl border border-theme-card space-y-1">
-            <span className="text-theme-subtext block text-[10px]">الرقم الضريبي (ZATCA):</span>
-            <span className="text-indigo-600 dark:text-indigo-400 font-mono font-bold text-sm block">
-              {settings?.taxNumber || '310123456700003'}
-            </span>
-            <span className="text-[10px] text-theme-subtext">ضريبة القيمة المضافة 15%</span>
-          </div>
-
-          <div className="p-3.5 bg-theme-inner rounded-2xl border border-theme-card space-y-1">
-            <span className="text-theme-subtext block text-[10px]">الضمان الذهبي والاسترجاع:</span>
-            <span className="text-amber-600 dark:text-amber-400 font-bold text-xs block">
-              استبدال واسترجاع خلال 7 أيام
-            </span>
-            <span className="text-[10px] text-theme-subtext">ضمان جودة وأصالة المنتج %100</span>
-          </div>
-
-          <div className="p-3.5 bg-theme-inner rounded-2xl border border-theme-card space-y-1">
-            <span className="text-theme-subtext block text-[10px]">تتبع ومسار الشحنات:</span>
-            <span className="text-sky-600 dark:text-sky-400 font-bold text-xs block">
-              أرامكس • سمسا • سبل • ريدبوكس
-            </span>
-            <span className="text-[10px] text-theme-subtext">توصيل لكافة مدن المملكة واليمن</span>
-          </div>
-        </div>
-
-        {/* Policy Quick Links */}
-        {onOpenPolicies && (
-          <div className="flex flex-wrap items-center justify-center gap-2 pt-2 border-t border-theme-card text-xs">
-            <button onClick={() => onOpenPolicies('about')} className="text-theme-subtext hover:text-theme-primary transition-colors cursor-pointer px-2 py-1">من نحن</button>
-            <span className="text-theme-subtext opacity-50">•</span>
-            <button onClick={() => onOpenPolicies('warranty')} className="text-theme-subtext hover:text-theme-primary transition-colors cursor-pointer px-2 py-1">سياسة الضمان</button>
-            <span className="text-theme-subtext opacity-50">•</span>
-            <button onClick={() => onOpenPolicies('return')} className="text-theme-subtext hover:text-theme-primary transition-colors cursor-pointer px-2 py-1">الاستبدال والاسترجاع</button>
-            <span className="text-theme-subtext opacity-50">•</span>
-            <button onClick={() => onOpenPolicies('shipping')} className="text-theme-subtext hover:text-theme-primary transition-colors cursor-pointer px-2 py-1">الشحن والتوصيل</button>
-            <span className="text-theme-subtext opacity-50">•</span>
-            {onOpenTracking && (
-              <button onClick={onOpenTracking} className="text-sky-500 hover:underline font-bold px-2 py-1 cursor-pointer">
-                تتبع حالة الطلب 🚚
-              </button>
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-2 border-t border-theme-card text-xs">
+                <button onClick={() => onOpenPolicies('about')} className="text-theme-subtext hover:text-theme-primary transition-colors cursor-pointer px-2 py-1">من نحن</button>
+                <span className="text-theme-subtext opacity-50">•</span>
+                <button onClick={() => onOpenPolicies('warranty')} className="text-theme-subtext hover:text-theme-primary transition-colors cursor-pointer px-2 py-1">سياسة الضمان</button>
+                <span className="text-theme-subtext opacity-50">•</span>
+                <button onClick={() => onOpenPolicies('return')} className="text-theme-subtext hover:text-theme-primary transition-colors cursor-pointer px-2 py-1">الاستبدال والاسترجاع</button>
+                <span className="text-theme-subtext opacity-50">•</span>
+                <button onClick={() => onOpenPolicies('shipping')} className="text-theme-subtext hover:text-theme-primary transition-colors cursor-pointer px-2 py-1">الشحن والتوصيل</button>
+                <span className="text-theme-subtext opacity-50">•</span>
+                {onOpenTracking && (
+                  <button onClick={onOpenTracking} className="text-sky-500 hover:underline font-bold px-2 py-1 cursor-pointer">
+                    تتبع حالة الطلب 🚚
+                  </button>
+                )}
+              </div>
             )}
           </div>
         )}
